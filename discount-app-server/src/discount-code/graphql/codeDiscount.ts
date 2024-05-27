@@ -1,15 +1,58 @@
 export const createDiscountCodeFreeShipping = `mutation discountCodeFreeShippingCreate($freeShippingCodeDiscount: DiscountCodeFreeShippingInput!) {
-    discountCodeFreeShippingCreate(freeShippingCodeDiscount: $freeShippingCodeDiscount) {
-      userErrors {
-        field
-        message
+  discountCodeFreeShippingCreate(freeShippingCodeDiscount: $freeShippingCodeDiscount) {
+    codeDiscountNode {
+      id
+      codeDiscount {
+        ... on DiscountCodeFreeShipping {
+          summary
+        }
       }
     }
-  }`;
-export const createDiscountCodeBasic = `mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
-  discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
     userErrors {
       field
+      code
+      message
+    }
+  }
+}`;
+export const createDiscountCodeBasic = `mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
+  discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
+    codeDiscountNode {
+      id
+      codeDiscount {
+        ... on DiscountCodeBasic {
+          title
+          codes(first: 10) {
+            nodes {
+              code
+            }
+          }
+          startsAt
+          endsAt
+          customerSelection {
+            ... on DiscountCustomerAll {
+              allCustomers
+            }
+          }
+          customerGets {
+            value {
+              ... on DiscountPercentage {
+                percentage
+              }
+            }
+            items {
+              ... on AllDiscountItems {
+                allItems
+              }
+            }
+          }
+          appliesOncePerCustomer
+        }
+      }
+    }
+    userErrors {
+      field
+      code
       message
     }
   }

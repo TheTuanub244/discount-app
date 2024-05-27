@@ -22,7 +22,11 @@ import "../styles/main.css";
 import { useDateFormatter } from "@react-aria/i18n";
 import Calendar from "../Components/Calendar/Calendar";
 import DiscardModal from "~/Components/DiscardModal/DIscardModal";
-import { createBuyXgetY, createFreeShipping } from "../api/DiscountAPI";
+import {
+  createBuyXgetY,
+  createDiscountBasic,
+  createFreeShipping,
+} from "../api/DiscountAPI";
 import { getAllProduct } from "../api/ProductAPI";
 import ProductModal from "~/Components/ProductModal/ProductModal";
 import { LoaderFunctionArgs } from "@remix-run/node";
@@ -40,6 +44,12 @@ export async function loader({ params }: LoaderFunctionArgs) {
     return {
       params: "Free shipping",
       method: "Shipping discount",
+      products: data,
+    };
+  } else if (formattedURL == "AmountOffOrder") {
+    return {
+      params: "Amount off order",
+      method: "Order discount",
       products: data,
     };
   }
@@ -99,6 +109,16 @@ export default function CreatePage() {
       subscription: false,
       both: false,
     },
+    discountValue: {
+      percentage: {
+        choose: false,
+        amount: 0,
+      },
+      fixedAmount: {
+        choose: false,
+        amount: 0,
+      },
+    },
     shippingMinimumRequirement: {
       subtotal: {
         choose: false,
@@ -145,6 +165,72 @@ export default function CreatePage() {
         return { ...state, title: action.payload };
       case "id":
         return { ...state, id: action.payload };
+      case "discountValue":
+        if (action.subtype == "fixedAmount") {
+          if (action.payload) {
+            return {
+              ...state,
+
+              discountValue: {
+                percentage: {
+                  choose: false,
+                  amount: 0,
+                },
+                fixedAmount: {
+                  choose: true,
+                  amount: action.payload,
+                },
+              },
+            };
+          } else {
+            return {
+              ...state,
+
+              discountValue: {
+                percentage: {
+                  choose: false,
+                  amount: 0,
+                },
+                fixedAmount: {
+                  choose: true,
+                  amount: 0,
+                },
+              },
+            };
+          }
+        } else {
+          if (action.payload) {
+            return {
+              ...state,
+
+              discountValue: {
+                percentage: {
+                  choose: true,
+                  amount: action.payload,
+                },
+                fixedAmount: {
+                  choose: false,
+                  amount: 0,
+                },
+              },
+            };
+          } else {
+            return {
+              ...state,
+
+              discountValue: {
+                percentage: {
+                  choose: true,
+                  amount: 0,
+                },
+                fixedAmount: {
+                  choose: false,
+                  amount: 0,
+                },
+              },
+            };
+          }
+        }
       case "minimumRequirement":
         console.log();
 
@@ -1169,14 +1255,77 @@ export default function CreatePage() {
       const data = await createFreeShipping(state);
     } else if (params == "Buy X get Y") {
       const data = await createBuyXgetY(state);
+    } else if (params == "Amount off order") {
+      const data = await createDiscountBasic(state);
     }
+
     // navigate("/app", {
     //   replace: true,
     //   relative: "path",
     //   state: { some: "state" },
     // });
   };
-
+  const renderDiscountValue = useMemo(() => {
+    return (
+      <div className="p-4 bg-white rounded-3xl mt-10 ml-40 w-full h-100 flex flex-col">
+        <span className="font-bold text-xl">Discount Value</span>
+        <div className="flex gap-1 mt-2">
+          <Select
+            className="w-full"
+            defaultSelectedKeys={"1"}
+            onChange={(e) => {
+              if (e.target.value == "1") {
+                dispatch({ type: "discountValue", subType: "fixedAmount" });
+              } else {
+                dispatch({ type: "discountValue", subType: "percentage" });
+              }
+            }}
+          >
+            <SelectItem key="1" value={"Fixed amount"}>
+              Fixed amount
+            </SelectItem>
+            <SelectItem key="2" value={"Percentage"}>
+              Percentage
+            </SelectItem>
+          </Select>
+          <Input
+            variant="bordered"
+            className="w-1/4"
+            endContent={state.discountValue.percentage.choose ? "%" : "đ"}
+            onChange={(e) => {
+              if (state.discountValue.percentage.choose) {
+                dispatch({
+                  type: "discountValue",
+                  subType: "percentage",
+                  payload: e.target.value,
+                });
+              } else {
+                dispatch({
+                  type: "discountValue",
+                  subType: "fixedAmount",
+                  payload: e.target.value,
+                });
+              }
+            }}
+          />
+        </div>
+        <span className="font-bold text-xl" style={{ marginTop: 18 }}>
+          Discount Value
+        </span>
+        <Select className="w-full mt-2" defaultSelectedKeys={"1"}>
+          <SelectItem key="1" value={"oneTime"}>
+            One-time purchase
+          </SelectItem>
+          <SelectItem key="2" value={"subscription"}>
+            Subscription
+          </SelectItem>
+          <SelectItem key="3" value={"both"}>
+            Both
+          </SelectItem>
+        </Select>
+      </div>
+    );
+  }, [state]);
   return (
     <div className="flex flex-row justify-between background">
       <div className="w-1/2 ">
@@ -1225,6 +1374,7 @@ export default function CreatePage() {
           </Tabs>
           {renderTitle}
         </div>
+        {params == "Amount off order" && <>{renderDiscountValue}</>}
         {params == "Buy X get Y" && (
           <>
             <div className="p-4 bg-white rounded-3xl mt-10 ml-40 w-full h-100 flex flex-col">
@@ -1232,7 +1382,7 @@ export default function CreatePage() {
             </div>
             <div className="p-4 bg-white rounded-3xl mt-10 ml-40 w-full h-100 flex flex-col">
               <h1
-                className="font-semibold"
+                className="font-semibold text-xl"
                 style={{
                   fontSize: 18,
                 }}
@@ -1338,40 +1488,45 @@ export default function CreatePage() {
             </div>
           </>
         )}
-        {params == "Free shipping" && (
+        {(params == "Free shipping" || params == "Amount off order") && (
           <>
-            <div className="p-4 bg-white rounded-3xl mt-10 ml-40 w-full h-100 flex flex-col">
-              <span
-                className="font-semibold"
-                style={{
-                  fontSize: 16,
-                }}
-              >
-                Purchase type
-              </span>
+            {params == "Free shipping" && (
+              <div className="p-4 bg-white rounded-3xl mt-10 ml-40 w-full h-100 flex flex-col">
+                <span
+                  className="font-semibold"
+                  style={{
+                    fontSize: 16,
+                  }}
+                >
+                  Purchase type
+                </span>
 
-              <RadioGroup
-                value={selectedPurchaseType}
-                onValueChange={(value) => {
-                  setSelectedPurchaseType(value);
-                  if (value == "1") {
-                    dispatch({ type: "purchaseType", payload: "oneTime" });
-                  } else if (value == "2") {
-                    dispatch({ type: "purchaseType", payload: "subscription" });
-                  } else {
-                    dispatch({ type: "purchaseType", payload: "both" });
-                  }
-                }}
-                style={{
-                  marginTop: 10,
-                  fontWeight: 400,
-                }}
-              >
-                <Radio value="1">One-time purchase</Radio>
-                <Radio value="2">Subscription</Radio>
-                <Radio value="3">Both</Radio>
-              </RadioGroup>
-            </div>
+                <RadioGroup
+                  value={selectedPurchaseType}
+                  onValueChange={(value) => {
+                    setSelectedPurchaseType(value);
+                    if (value == "1") {
+                      dispatch({ type: "purchaseType", payload: "oneTime" });
+                    } else if (value == "2") {
+                      dispatch({
+                        type: "purchaseType",
+                        payload: "subscription",
+                      });
+                    } else {
+                      dispatch({ type: "purchaseType", payload: "both" });
+                    }
+                  }}
+                  style={{
+                    marginTop: 10,
+                    fontWeight: 400,
+                  }}
+                >
+                  <Radio value="1">One-time purchase</Radio>
+                  <Radio value="2">Subscription</Radio>
+                  <Radio value="3">Both</Radio>
+                </RadioGroup>
+              </div>
+            )}
             <div className="p-4 bg-white rounded-3xl mt-10 ml-40 w-full h-100 flex flex-col">
               <span
                 className="font-semibold"

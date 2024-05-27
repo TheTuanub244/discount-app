@@ -17,6 +17,7 @@ import {
   createDiscountCodeBasic,
   createDiscountCodeFreeShipping,
 } from './graphql/codeDiscount';
+import { CombinesWith } from '../schemas/CombinesWith.schema';
 
 @Injectable()
 export class DiscountCodeService {
@@ -31,6 +32,8 @@ export class DiscountCodeService {
     private discountCodeFreeShippingModel: Model<DiscountCodeFreeShipping>,
     @InjectModel(Metafield.name)
     private metafieldModel: Model<Metafield>,
+    @InjectModel(CombinesWith.name)
+    private combinesWithModel: Model<CombinesWith>,
     @InjectModel(BasicDetail.name)
     private basicDetailModel: Model<BasicDetail>,
     private readonly discountBasicService: DiscountBasicService,
@@ -330,19 +333,36 @@ export class DiscountCodeService {
     discountCustomerGets,
     ...discountCodeBasicDto
   }: DiscountCodebBasicDto) {
-    if (basicDetail && discountCustomerGets) {
+    if (basicDetail || discountCustomerGets) {
       try {
         const savedBasicDetail =
           await this.discountBasicService.createBasicDetail(basicDetail);
+
+        await this.basicDetailModel.findByIdAndUpdate(
+          { _id: savedBasicDetail._id },
+          {
+            $set: {
+              type: 'Code',
+              method: 'Order Discount',
+              status: 'ACTIVE',
+            },
+          },
+          { new: true },
+        );
+
         const savedDiscountCustomerGets =
           await this.discountBasicService.createDiscountCustomerGets(
             discountCustomerGets,
           );
-        new this.discountCodeBasicModel({
+        console.log(savedDiscountCustomerGets);
+
+        const newDiscount = new this.discountCodeBasicModel({
           ...discountCodeBasicDto,
           basicDetail: savedBasicDetail._id,
           discountCustomerGets: savedDiscountCustomerGets._id,
         });
+
+        const savedDiscount = await newDiscount.save();
         const data = await client.request(createDiscountCodeBasic, {
           variables: {
             basicCodeDiscount: {
@@ -369,6 +389,18 @@ export class DiscountCodeService {
             },
           },
         });
+        await this.basicDetailModel.findByIdAndUpdate(
+          { _id: savedBasicDetail._id },
+          {
+            $set: {
+              summary:
+                data.data.discountCodeBasicCreate.codeDiscountNode.codeDiscount
+                  .summary,
+              id: data.data.discountCodeBasicCreate.codeDiscountNode.id,
+            },
+          },
+          { new: true },
+        );
         return data;
       } catch (e) {
         return e;
@@ -391,7 +423,27 @@ export class DiscountCodeService {
           );
         const savedBasicDetail =
           await this.discountBasicService.createBasicDetail(basicDetail);
+        await this.basicDetailModel.findByIdAndUpdate(
+          { _id: savedBasicDetail._id },
+          {
+            $set: {
+              type: 'Code',
+              method: 'Shipping Discount',
+              status: 'ACTIVE',
+            },
+          },
+          { new: true },
+        );
 
+        await this.combinesWithModel.findByIdAndUpdate(
+          { _id: savedBasicDetail.combinesWith._id },
+          {
+            $set: {
+              shippingDiscounts: false,
+            },
+          },
+          { new: true },
+        );
         const newDiscount = new this.discountCodeFreeShippingModel({
           discountMinimumRequirement: savedDiscountMinimumRequirement._id,
           discountShippingDestinationSelection: savedDestination._id,
@@ -399,6 +451,7 @@ export class DiscountCodeService {
           ...discountCodeFreeShippingDto,
         });
         const savedDiscount = await newDiscount.save();
+
         if (discountMinimumRequirement.quantity) {
           const data = await client.request(createDiscountCodeFreeShipping, {
             variables: {
@@ -436,15 +489,18 @@ export class DiscountCodeService {
             {
               $set: {
                 summary:
-                  data.data.discountCodeBxgyCreate.codeDiscountNode
-                    .automaticDiscount.summary,
-                id: data.data.discountCodeBxgyCreate.codeDiscountNode.id,
+                  data.data.discountCodeFreeShippingCreate.codeDiscountNode
+                    .codeDiscount.summary,
+                id: data.data.discountCodeFreeShippingCreate.codeDiscountNode
+                  .id,
               },
             },
             { new: true },
           );
           return data;
         } else {
+          console.log('123');
+
           const data = await client.request(createDiscountCodeFreeShipping, {
             variables: {
               freeShippingCodeDiscount: {
@@ -476,18 +532,24 @@ export class DiscountCodeService {
               },
             },
           });
-          await this.basicDetailModel.findByIdAndUpdate(
-            { _id: savedBasicDetail._id },
-            {
-              $set: {
-                summary:
-                  data.data.discountCodeBxgyCreate.codeDiscountNode
-                    .automaticDiscount.summary,
-                id: data.data.discountCodeBxgyCreate.codeDiscountNode.id,
+
+          if (data) {
+            console.log(data);
+
+            await this.basicDetailModel.findByIdAndUpdate(
+              { _id: savedBasicDetail._id },
+              {
+                $set: {
+                  summary:
+                    data.data.discountCodeFreeShippingCreate.codeDiscountNode
+                      .codeDiscount.summary,
+                  id: data.data.discountCodeFreeShippingCreate.codeDiscountNode
+                    .id,
+                },
               },
-            },
-            { new: true },
-          );
+              { new: true },
+            );
+          }
           return data;
         }
       } catch (e) {
@@ -495,6 +557,7 @@ export class DiscountCodeService {
       }
     }
   }
+
   async getAllDiscountCodes() {
     const codeNodes = {
       edges: [],

@@ -538,6 +538,7 @@ export class DiscountBasicService {
       const discountOnQuantity = [];
       const productsToAdds = [];
       const saveDiscountItems = [];
+
       const discountCustomerGetsWithItem =
         await this.discountCustomerGetsModel.aggregate([
           {
@@ -560,6 +561,8 @@ export class DiscountBasicService {
             },
           },
         ]);
+      console.log(discountCustomerGetsWithItem);
+      console.log(discountCustomerGetsWithValue);
 
       if (
         discountCustomerGetsWithItem.length == 0 &&

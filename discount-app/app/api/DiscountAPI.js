@@ -32,3 +32,10 @@ export const createFreeShipping = async (discount) => {
   );
   return data.data;
 };
+export const createDiscountBasic = async (discount) => {
+  const data = await axios.post(
+    "http://localhost:8000/discount/createBasic",
+    discount,
+  );
+  return data.data;
+};

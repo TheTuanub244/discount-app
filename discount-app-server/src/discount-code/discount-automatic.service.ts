@@ -637,8 +637,6 @@ export class DiscountAutomaticService {
     basicDetail,
     ...automaticDiscountFreeShippingDto
   }: AutomaticDiscountFreeShippingDto) {
-    console.log(discountMinimumRequirement);
-
     if (discountMinimumRequirement && destination) {
       const savedDiscountMinimumRequirement =
         await this.discountBasicService.createDiscountMinimumRequirement(
@@ -694,7 +692,7 @@ export class DiscountAutomaticService {
               minimumRequirement: {
                 subtotal: {
                   greaterThanOrEqualToSubtotal:
-                    savedDiscountMinimumRequirement.subtotal,
+                    savedDiscountMinimumRequirement.subtotal.toString(),
                 },
               },
               destination: {
@@ -736,7 +734,7 @@ export class DiscountAutomaticService {
               minimumRequirement: {
                 quantity: {
                   greaterThanOrEqualToQuantity:
-                    savedDiscountMinimumRequirement.quantity,
+                    savedDiscountMinimumRequirement.quantity.toString(),
                 },
               },
               destination: {
@@ -882,7 +880,7 @@ export class DiscountAutomaticService {
           if (findBxGy) {
             try {
               const updatedData = await this.basicDetailModel.findByIdAndUpdate(
-                { _id: findBasic.basicDetail },
+                { _id: findBxGy.basicDetail },
                 {
                   $set: {
                     status:
