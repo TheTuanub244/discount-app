@@ -752,7 +752,8 @@ export class DiscountController {
               collections: null,
             },
             value: {
-              percentage: discount.discountValue.percentage.amount,
+              percentage:
+                parseFloat(discount.discountValue.percentage.amount) / 100,
               discountAmount: null,
               discountOnQuantity: null,
             },

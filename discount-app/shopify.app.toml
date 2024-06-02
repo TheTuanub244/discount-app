@@ -3,7 +3,7 @@
 client_id = "9976e9765085ed7ecb4561fd266a92aa"
 name = "discount-app"
 handle = "discount-app-658"
-application_url = "https://veterinary-princeton-increasing-hello.trycloudflare.com"
+application_url = "https://wood-guarantees-marc-airport.trycloudflare.com"
 embedded = true
 
 [build]
@@ -17,9 +17,9 @@ scopes = "read_product_listings,read_products,write_discounts,write_products"
 
 [auth]
 redirect_urls = [
-  "https://veterinary-princeton-increasing-hello.trycloudflare.com/auth/callback",
-  "https://veterinary-princeton-increasing-hello.trycloudflare.com/auth/shopify/callback",
-  "https://veterinary-princeton-increasing-hello.trycloudflare.com/api/auth/callback"
+  "https://wood-guarantees-marc-airport.trycloudflare.com/auth/callback",
+  "https://wood-guarantees-marc-airport.trycloudflare.com/auth/shopify/callback",
+  "https://wood-guarantees-marc-airport.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]

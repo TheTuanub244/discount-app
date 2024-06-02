@@ -351,57 +351,110 @@ export class DiscountCodeService {
         );
 
         const savedDiscountCustomerGets =
-          await this.discountBasicService.createDiscountCustomerGets(
-            discountCustomerGets,
-          );
-        console.log(savedDiscountCustomerGets);
+          await this.discountBasicService.createDiscountCustomerGets({
+            appliesOnOneTimePurchase:
+              discountCustomerGets.appliesOnOneTimePurchase,
+            appliesOnSubscription: discountCustomerGets.appliesOnSubscription,
+            item: discountCustomerGets.item,
+            value: discountCustomerGets.value,
+          });
 
         const newDiscount = new this.discountCodeBasicModel({
           ...discountCodeBasicDto,
           basicDetail: savedBasicDetail._id,
           discountCustomerGets: savedDiscountCustomerGets._id,
         });
-
         const savedDiscount = await newDiscount.save();
-        const data = await client.request(createDiscountCodeBasic, {
-          variables: {
-            basicCodeDiscount: {
-              apppliesOncePerCustomer: savedBasicDetail.appliesOncePerCustomer,
-              code: savedBasicDetail.code,
-              title: savedBasicDetail.title,
-              combinesWith: {
-                orderDiscounts: savedBasicDetail.combinesWith.orderDiscounts,
-                productDiscounts:
-                  savedBasicDetail.combinesWith.productDiscounts,
-                shippingDiscounts:
-                  savedBasicDetail.combinesWith.shippingDiscounts,
+        console.log(savedDiscountCustomerGets.value.percentage);
+        if (discountCustomerGets.value.percentage) {
+          const data = await client.request(createDiscountCodeBasic, {
+            variables: {
+              basicCodeDiscount: {
+                code: savedBasicDetail.title,
+                title: savedBasicDetail.title,
+                customerGets: {
+                  value: {
+                    percentage: 0.2,
+                  },
+                  items: {
+                    all: true,
+                  },
+                },
+                customerSelection: {
+                  all: true,
+                },
+                combinesWith: {
+                  orderDiscounts: basicDetail.combinesWith.orderDiscounts,
+                  productDiscounts: basicDetail.combinesWith.productDiscounts,
+                  shippingDiscount: basicDetail.combinesWith.shippingDiscounts,
+                },
+                startsAt: basicDetail.startsAt,
+                endsAt: null,
               },
-              customerGets: {
-                appliesOnSubscription:
-                  savedDiscountCustomerGets.appliesOnSubscription,
-                item: savedDiscountCustomerGets.item,
-                value: savedDiscountCustomerGets.value,
+            },
+          });
+
+          await this.basicDetailModel.findByIdAndUpdate(
+            { _id: savedBasicDetail._id },
+            {
+              $set: {
+                summary:
+                  data.data.discountCodeBasicCreate.codeDiscountNode
+                    .codeDiscount.summary,
+                id: data.data.discountCodeBasicCreate.codeDiscountNode.id,
               },
-              endsAt: savedBasicDetail.endsAt,
-              startsAt: savedBasicDetail.startsAt,
-              recurringCycleLimit: discountCodeBasicDto.recurringCycleLimit,
-              usageLimit: savedBasicDetail.usageLimit,
             },
-          },
-        });
-        await this.basicDetailModel.findByIdAndUpdate(
-          { _id: savedBasicDetail._id },
-          {
-            $set: {
-              summary:
-                data.data.discountCodeBasicCreate.codeDiscountNode.codeDiscount
-                  .summary,
-              id: data.data.discountCodeBasicCreate.codeDiscountNode.id,
+            { new: true },
+          );
+          return data;
+        } else {
+          const data = await client.request(createDiscountCodeBasic, {
+            variables: {
+              basicCodeDiscount: {
+                code: savedBasicDetail.title,
+                title: savedBasicDetail.title,
+                customerGets: {
+                  value: {
+                    discountAmount: {
+                      amount:
+                        savedDiscountCustomerGets.value.discountAmount.amount,
+                      appliesOnEachItem:
+                        savedDiscountCustomerGets.value.discountAmount
+                          .appliesOnEachItem,
+                    },
+                  },
+                  items: {
+                    all: true,
+                  },
+                },
+                customerSelection: {
+                  all: true,
+                },
+                combinesWith: {
+                  orderDiscounts: basicDetail.combinesWith.orderDiscounts,
+                  productDiscounts: basicDetail.combinesWith.productDiscounts,
+                  shippingDiscount: basicDetail.combinesWith.shippingDiscounts,
+                },
+                startsAt: basicDetail.startsAt,
+                endsAt: null,
+              },
             },
-          },
-          { new: true },
-        );
-        return data;
+          });
+
+          await this.basicDetailModel.findByIdAndUpdate(
+            { _id: savedBasicDetail._id },
+            {
+              $set: {
+                summary:
+                  data.data.discountCodeBasicCreate.codeDiscountNode
+                    .codeDiscount.summary,
+                id: data.data.discountCodeBasicCreate.codeDiscountNode.id,
+              },
+            },
+            { new: true },
+          );
+          return data;
+        }
       } catch (e) {
         return e;
       }
@@ -565,7 +618,7 @@ export class DiscountCodeService {
     const basics = await this.discountCodeBasicModel
       .find()
       .populate({
-        path: 'basicDetal',
+        path: 'basicDetail',
         populate: { path: 'combinesWith' },
       })
       .populate({ path: 'discountCustomerGets', populate: { path: 'item' } })

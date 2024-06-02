@@ -462,7 +462,6 @@ export class DiscountBasicService {
                 value,
               );
               const savedDiscountValues = await newDIscountValues.save();
-              console.log(newDIscountValues);
 
               const newDiscountCustomerBuys =
                 new this.discountCustomerBuysModel({
@@ -538,6 +537,7 @@ export class DiscountBasicService {
       const discountOnQuantity = [];
       const productsToAdds = [];
       const saveDiscountItems = [];
+      console.log(value);
 
       const discountCustomerGetsWithItem =
         await this.discountCustomerGetsModel.aggregate([
@@ -561,8 +561,6 @@ export class DiscountBasicService {
             },
           },
         ]);
-      console.log(discountCustomerGetsWithItem);
-      console.log(discountCustomerGetsWithValue);
 
       if (
         discountCustomerGetsWithItem.length == 0 &&
@@ -679,6 +677,7 @@ export class DiscountBasicService {
                 index.products,
               );
               const productsToAdd = products.productsToAdd;
+
               for (let i = 0; i < productsToAdd.length; i++) {
                 for (let j = 0; j < item.products.productsToAdd.length; j++) {
                   if (productsToAdd[i] == item.products.productsToAdd[j]) {
@@ -689,6 +688,7 @@ export class DiscountBasicService {
               }
             }),
           );
+
           if (saveDiscountItems.length != 0) {
             savedDiscountItem.push({
               _id: saveDiscountItems[0]._id,
@@ -700,6 +700,7 @@ export class DiscountBasicService {
 
           if (savedDiscountItem.length == 0) {
             const temp = await this.createDiscountProductsInput(item.products);
+
             const newDiscountItem = new this.discountItemsModel({
               products: temp._id,
             });
@@ -893,15 +894,18 @@ export class DiscountBasicService {
             const findProducts = await this.discountProductsInputModel.findById(
               item_info.products,
             );
-            const toAdd = item.products.productsToAdd;
 
-            const productsToAdd = findProducts.productsToAdd;
+            if (item.products) {
+              const toAdd = item.products.productsToAdd;
 
-            for (let i = 0; i < productsToAdd.length; i++) {
-              for (let j = 0; j < toAdd.length; j++) {
-                if (toAdd[j] == productsToAdd[i]) {
-                  productsToAdds.push(productsToAdd[i]);
-                  saveDiscountItems[0] = index;
+              const productsToAdd = findProducts.productsToAdd;
+
+              for (let i = 0; i < productsToAdd.length; i++) {
+                for (let j = 0; j < toAdd.length; j++) {
+                  if (toAdd[j] == productsToAdd[i]) {
+                    productsToAdds.push(productsToAdd[i]);
+                    saveDiscountItems[0] = index;
+                  }
                 }
               }
             }
@@ -915,6 +919,14 @@ export class DiscountBasicService {
               productsToAdd: productsToAdds[0],
             },
           });
+        } else {
+          const newDiscountItem = new this.discountItemsModel({
+            all: true,
+            collections: null,
+            products: null,
+          });
+          const savedDiscountItem = await newDiscountItem.save();
+          saveDiscountItems.push(savedDiscountItem);
         }
 
         await Promise.all(
@@ -1117,19 +1129,87 @@ export class DiscountBasicService {
           if (
             savedDiscountValue.length != 0 &&
             savedDiscountCustomerGets.length != 0 &&
-            savedDiscountItem.length != 0
+            saveDiscountItems.length != 0
           ) {
             return {
               _id: savedDiscountCustomerGets[0]._id,
               item: {
-                products: savedDiscountItem[0].products,
+                products: saveDiscountItems[0].products,
+                all: saveDiscountItems[0].all,
+                collections: saveDiscountItems[0].collections,
               },
-              value: value,
+              value: {
+                discountAmount: savedDiscountValue[0].discountAmount,
+                discountOnQuantity: savedDiscountValue[0].discountOnQuantity,
+                percentage: savedDiscountValue[0].percentage,
+              },
               appliesOnSubscription:
                 discountCustomerGetsDto.appliesOnSubscription,
               appliesOnOneTimePurchase:
                 discountCustomerGetsDto.appliesOnOneTimePurchase,
             };
+          } else {
+            const newDiscountvalue =
+              await this.createDiscountCustomerGetsValue(value);
+
+            if (item.products) {
+              const temp = await this.createDiscountProductsInput(
+                item.products,
+              );
+              const newDiscountItem = new this.discountItemsModel({
+                products: temp._id,
+              });
+              const savedDiscountItem = await newDiscountItem.save();
+              const newDiscountCustomerGets =
+                new this.discountCustomerGetsModel({
+                  item: savedDiscountItem._id,
+                  value: newDiscountvalue._id,
+                  ...discountCustomerGetsDto,
+                });
+              return {
+                _id: newDiscountCustomerGets._id,
+                item: {
+                  products: item.products,
+                },
+                value: {
+                  percentage: newDiscountvalue.percentage,
+                },
+                appliesOnSubscription:
+                  discountCustomerGetsDto.appliesOnSubscription,
+                appliesOnOneTimePurchase:
+                  discountCustomerGetsDto.appliesOnOneTimePurchase,
+              };
+            } else {
+              const newDiscountItem = new this.discountItemsModel({
+                products: null,
+                collections: null,
+                all: true,
+              });
+              const savedDiscountItem = await newDiscountItem.save();
+              const newDiscountCustomerGets =
+                new this.discountCustomerGetsModel({
+                  item: savedDiscountItem._id,
+                  value: newDiscountvalue._id,
+                  ...discountCustomerGetsDto,
+                });
+              const savedDiscountCustomerGets =
+                await newDiscountCustomerGets.save();
+              return {
+                _id: savedDiscountCustomerGets._id,
+                item: {
+                  products: item.products,
+                  collections: item.collections,
+                  all: item.all,
+                },
+                value: {
+                  percentage: newDiscountvalue.percentage,
+                },
+                appliesOnSubscription:
+                  discountCustomerGetsDto.appliesOnSubscription,
+                appliesOnOneTimePurchase:
+                  discountCustomerGetsDto.appliesOnOneTimePurchase,
+              };
+            }
           }
         }
       }
@@ -1270,11 +1350,34 @@ export class DiscountBasicService {
           percentage: discountCustomerGetsValueDto.percentage,
         };
       } else {
-        discountCustomerGetsValues.map((index) => {
-          if (index.percentage == discountCustomerGetsValueDto.percentage) {
-            savedDiscountCustomerGetsValues.push(index);
-          }
-        });
+        await Promise.all(
+          discountCustomerGetsValues.map(async (index) => {
+            if (index.percentage == discountCustomerGetsValueDto.percentage) {
+              savedDiscountCustomerGetsValues.push(index);
+            }
+          }),
+        );
+
+        if (savedDiscountCustomerGetsValues.length == 0) {
+          const newDiscountCustomerGetsValue =
+            new this.discountCustomerGetsValueModel({
+              discountAmount: null,
+              discountOnQuantity: null,
+              percentage: discountCustomerGetsValueDto.percentage,
+            });
+          const saveDiscountCustomerGetsValue =
+            await newDiscountCustomerGetsValue.save();
+          savedDiscountCustomerGetsValues.push(saveDiscountCustomerGetsValue);
+        }
+
+        return {
+          _id: savedDiscountCustomerGetsValues[0]._id,
+          discountAmount: savedDiscountCustomerGetsValues[0].discountAmount,
+          discountOnQuantity:
+            savedDiscountCustomerGetsValues[0].discountOnQuantity,
+          percentage:
+            parseInt(savedDiscountCustomerGetsValues[0].percentage) / 100,
+        };
       }
     }
     if (discountAmount) {
@@ -1506,25 +1609,6 @@ export class DiscountBasicService {
               discountOnQuantity: discountOnQuantity,
             };
           }
-        }
-      }
-      if (discountCustomerGetsValueDto.percentage) {
-        if (savedDiscountCustomerGetsValues.length != 0) {
-          return {
-            _id: savedDiscountCustomerGetsValues[0]._id,
-            percentage: savedDiscountCustomerGetsValues[0].percentage,
-          };
-        } else {
-          const newDiscountCustomerGetsValue =
-            new this.discountCustomerGetsValueModel({
-              ...discountCustomerGetsValueDto,
-            });
-          const savedDiscountCustomerGetsValue =
-            await newDiscountCustomerGetsValue.save();
-          return {
-            _id: savedDiscountCustomerGetsValue._id,
-            percentage: savedDiscountCustomerGetsValue.percentage,
-          };
         }
       }
     }

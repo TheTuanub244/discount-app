@@ -22,30 +22,7 @@ export const createDiscountCodeBasic = `mutation discountCodeBasicCreate($basicC
       codeDiscount {
         ... on DiscountCodeBasic {
           title
-          codes(first: 10) {
-            nodes {
-              code
-            }
-          }
-          startsAt
-          endsAt
-          customerSelection {
-            ... on DiscountCustomerAll {
-              allCustomers
-            }
-          }
-          customerGets {
-            value {
-              ... on DiscountPercentage {
-                percentage
-              }
-            }
-            items {
-              ... on AllDiscountItems {
-                allItems
-              }
-            }
-          }
+          summary
           appliesOncePerCustomer
         }
       }

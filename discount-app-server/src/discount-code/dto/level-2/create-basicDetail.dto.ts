@@ -39,6 +39,10 @@ export class BasicDetailDto {
   @IsString()
   @IsNotEmpty()
   title: string;
+  @ApiProperty({ required: false })
+  @ValidateIf(
+    (o, value) => value !== null && value !== undefined && value !== '',
+  )
   startsAt: string;
   @ApiProperty({ required: false })
   @ValidateIf(
