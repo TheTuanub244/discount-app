@@ -234,8 +234,6 @@ export default function CreatePage() {
           }
         }
       case "minimumRequirement":
-        console.log();
-
         if (action.subtype == "products") {
           return {
             ...state,
@@ -1145,6 +1143,7 @@ export default function CreatePage() {
         color="primary"
         style={{
           marginTop: 14,
+          width: 300,
         }}
         onValueChange={(value) => {
           dispatch({ type: "customerGets", subType: value });
@@ -1160,7 +1159,7 @@ export default function CreatePage() {
                 payload: e.target.value,
               })
             }
-            className="w-20 ml-5"
+            className="w-1/2 ml-5"
             type="number"
             variant="bordered"
             endContent={
@@ -1180,7 +1179,7 @@ export default function CreatePage() {
                 payload: e.target.value,
               })
             }
-            className="w-20 ml-5"
+            className="w-1/2 ml-5"
             type="number"
             variant="bordered"
             startContent={
@@ -1724,7 +1723,7 @@ export default function CreatePage() {
               color="default"
               style={{ color: "white" }}
               onClick={() => {
-                handleSaveDiscount(state);
+                handleSaveDiscount();
               }}
             >
               Save discount

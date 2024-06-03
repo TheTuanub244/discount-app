@@ -26,6 +26,7 @@ import { DiscountProductsInputDto } from './dto/level-1/create-discountProductsI
 import { DiscountProductsInput } from '../schemas/DiscountProducsInput.schema';
 import { DiscountCollectionsInput } from '../schemas/DiscountCollectionsInput.schema';
 import { DiscountCustomerBuysValueDto } from './dto/level-1/create-discountCustomerBuysValue.dto';
+import { create } from 'domain';
 @Injectable()
 export class DiscountBasicService {
   constructor(
@@ -527,844 +528,125 @@ export class DiscountBasicService {
     value,
     ...discountCustomerGetsDto
   }: DiscountCustomerGetsDto) {
-    if (item && value) {
-      const savedDiscountItem = [];
-      const savedDiscountValue = [];
-      const discountAmountEffect = [];
-      const discountEffect = [];
-      const discountAmount = [];
-      const savedDiscountCustomerGets = [];
-      const discountOnQuantity = [];
-      const productsToAdds = [];
-      const saveDiscountItems = [];
+    const discountItem = [];
+    const discountValue = [];
+    if (item.products && item.collections) {
+      const newDiscountItem = new this.discountItemsModel({
+        all: true,
+        products: null,
+        collections: null,
+      });
+      const savedDiscountItem = await newDiscountItem.save();
+      discountItem.push(savedDiscountItem);
+    } else if (item.products) {
+      const newDiscountInput = new this.discountProductsInputModel({
+        productsToAdd: item.products.productsToAdd,
+      });
+      const savedDiscountInput = await newDiscountInput.save();
 
-      const discountCustomerGetsWithItem =
-        await this.discountCustomerGetsModel.aggregate([
-          {
-            $lookup: {
-              from: 'discountitems',
-              localField: 'item',
-              foreignField: '_id',
-              as: 'discountItem_info',
+      discountItem.push(savedDiscountInput);
+    }
+    if (value.percentage) {
+      const newDiscountValue = await this.createDiscountCustomerGetsValue({
+        percentage: value.percentage,
+        discountAmount: null,
+        discountOnQuantity: null,
+      });
+      discountValue.push(newDiscountValue);
+    } else if (value.discountAmount) {
+      const newDiscountValue = await this.createDiscountCustomerGetsValue({
+        percentage: null,
+        discountAmount: value.discountAmount,
+        discountOnQuantity: null,
+      });
+      discountValue.push(newDiscountValue);
+    } else if (value.discountOnQuantity) {
+      if (value.discountOnQuantity.effect.percentage) {
+        const newDiscountValue = await this.createDiscountCustomerGetsValue({
+          percentage: null,
+          discountAmount: null,
+          discountOnQuantity: {
+            quantity: value.discountOnQuantity.quantity,
+            effect: {
+              discountAmount: null,
+              percentage: value.discountOnQuantity.effect.percentage,
             },
           },
-        ]);
-      const discountCustomerGetsWithValue =
-        await this.discountCustomerGetsModel.aggregate([
-          {
-            $lookup: {
-              from: 'discountcustomergetsvalues',
-              localField: 'value',
-              foreignField: '_id',
-              as: 'discountValue_info',
+        });
+        discountValue.push(newDiscountValue);
+      } else if (value.discountOnQuantity.effect.discountAmount) {
+        const newDiscountValue = await this.createDiscountCustomerGetsValue({
+          percentage: null,
+          discountAmount: null,
+          discountOnQuantity: {
+            quantity: value.discountOnQuantity.quantity,
+            effect: {
+              discountAmount: value.discountOnQuantity.effect.discountAmount,
+              percentage: null,
             },
           },
-        ]);
-
-      if (
-        discountCustomerGetsWithItem.length == 0 &&
-        discountCustomerGetsWithValue.length == 0
-      ) {
-        const discountItems = await this.discountItemsModel.find();
-        const discountValue = await this.createDiscountCustomerGetsValue(value);
-
-        if (discountItems.length == 0) {
-          const temp = await this.createDiscountProductsInput(item.products);
-          const newDiscountItem = new this.discountItemsModel({
-            products: temp._id,
-          });
-          const savedDiscountItem = await newDiscountItem.save();
-          const newDiscountCustomerGets = new this.discountCustomerGetsModel({
-            item: savedDiscountItem._id,
-            value: discountValue._id,
-            appliesOnOnetimePurchase:
-              discountCustomerGetsDto.appliesOnOneTimePurchase,
-            appliesOnSubscription:
-              discountCustomerGetsDto.appliesOnSubscription,
-          });
-
-          const temp1 = await newDiscountCustomerGets.save();
-          if (value.discountAmount) {
-            const discountAmount = await this.discountAmountModel.findById(
-              discountValue.discountAmount,
-            );
-            return {
-              _id: temp1._id,
-              appliesOnSubscription: temp1.appliesOnSubscription,
-              appliesOnOneTimePurchase: temp1.appliesOnOnetimePurchase,
-              item: {
-                products: item.products,
-              },
-              value: {
-                discountAmount: {
-                  amount: discountAmount.amount,
-                  appliesOnEachItem: discountAmount.appliesOnEachItem,
-                },
-              },
-            };
-          }
-          if (value.discountOnQuantity) {
-            const discountOnQuantity =
-              await this.discountOnQuantityModel.findById(
-                discountValue.discountOnQuantity,
-              );
-            const discountEffect = await this.discountEffectModel.findById(
-              discountOnQuantity.effect,
-            );
-            if (value.discountOnQuantity.effect.discountAmount) {
-              const discountAmountEffect =
-                await this.discountAmountModel.findById(
-                  discountEffect.discountAmount,
-                );
-
-              return {
-                _id: temp1._id,
-                appliesOnSubscription: temp1.appliesOnSubscription,
-                appliesOnOneTimePurchase: temp1.appliesOnOnetimePurchase,
-                item: {
-                  products: item.products,
-                },
-                value: {
-                  discountOnQuantity: {
-                    effect: {
-                      discountAmount: {
-                        amount: discountAmountEffect.amount,
-                        appliesOnEachItem:
-                          discountAmountEffect.appliesOnEachItem,
-                      },
-                    },
-                    quantity: discountOnQuantity.quantity,
-                  },
-                },
-              };
-            }
-            if (value.discountOnQuantity.effect.percentage) {
-              return {
-                _id: temp1._id,
-                appliesOnSubscription: temp1.appliesOnSubscription,
-                appliesOnOneTimePurchase: temp1.appliesOnOnetimePurchase,
-                item: {
-                  products: item.products,
-                },
-                value: {
-                  discountOnQuantity: {
-                    effect: {
-                      percentage: discountEffect.percentage,
-                    },
-                    quantity: discountOnQuantity.quantity,
-                  },
-                },
-              };
-            }
-          }
-          if (value.percentage) {
-            return {
-              _id: temp1._id,
-              appliesOnSubscription: temp1.appliesOnSubscription,
-              appliesOnOneTimePurchase: temp1.appliesOnOnetimePurchase,
-              item: {
-                products: item.products,
-              },
-              value: {
-                percentage: discountValue.percentage,
-              },
-            };
-          }
-        } else {
-          await Promise.all(
-            discountItems.map(async (index) => {
-              const products = await this.discountProductsInputModel.findById(
-                index.products,
-              );
-              const productsToAdd = products.productsToAdd;
-
-              for (let i = 0; i < productsToAdd.length; i++) {
-                for (let j = 0; j < item.products.productsToAdd.length; j++) {
-                  if (productsToAdd[i] == item.products.productsToAdd[j]) {
-                    productsToAdds.push(productsToAdd[i]);
-                    saveDiscountItems[0] = index;
-                  }
-                }
-              }
-            }),
-          );
-
-          if (saveDiscountItems.length != 0) {
-            savedDiscountItem.push({
-              _id: saveDiscountItems[0]._id,
-              products: {
-                productsToAdd: productsToAdds[0],
-              },
-            });
-          }
-
-          if (savedDiscountItem.length == 0) {
-            const temp = await this.createDiscountProductsInput(item.products);
-
-            const newDiscountItem = new this.discountItemsModel({
-              products: temp._id,
-            });
-            const savedDiscountItem = await newDiscountItem.save();
-            const newDiscountCustomerGets = new this.discountCustomerGetsModel({
-              item: savedDiscountItem._id,
-              value: discountValue._id,
-              ...discountCustomerGetsDto,
-            });
-            const temp1 = await newDiscountCustomerGets.save();
-
-            if (value.discountAmount) {
-              const discountAmount = await this.discountAmountModel.findById(
-                discountValue.discountAmount,
-              );
-              return {
-                _id: temp1._id,
-                appliesOnSubscription: temp1.appliesOnSubscription,
-                appliesOnOnetimePurchase: temp1.appliesOnOnetimePurchase,
-                item: {
-                  products: item.products,
-                },
-                value: {
-                  discountAmount: {
-                    amount: discountAmount.amount,
-                    appliesOnEachItem: discountAmount.appliesOnEachItem,
-                  },
-                },
-              };
-            }
-            if (value.discountOnQuantity) {
-              const discountOnQuantity =
-                await this.discountOnQuantityModel.findById(
-                  discountValue.discountOnQuantity,
-                );
-              const discountEffect = await this.discountEffectModel.findById(
-                discountOnQuantity.effect,
-              );
-              if (value.discountOnQuantity.effect.discountAmount) {
-                const discountAmountEffect =
-                  await this.discountAmountModel.findById(
-                    discountEffect.discountAmount,
-                  );
-                return {
-                  _id: temp1._id,
-                  appliesOnSubscription: temp1.appliesOnSubscription,
-                  appliesOnOnetimePurchase: temp1.appliesOnOnetimePurchase,
-                  item: {
-                    products: item.products,
-                  },
-                  value: {
-                    discountOnQuantity: {
-                      effect: {
-                        discountAmount: {
-                          amount: discountAmountEffect.amount,
-                          appliesOnEachItem:
-                            discountAmountEffect.appliesOnEachItem,
-                        },
-                      },
-                      quantity: discountOnQuantity.quantity,
-                    },
-                  },
-                };
-              }
-              if (value.discountOnQuantity.effect.percentage) {
-                return {
-                  _id: temp1._id,
-                  appliesOnSubscription: temp1.appliesOnSubscription,
-                  appliesOnOnetimePurchase: temp1.appliesOnOnetimePurchase,
-                  item: {
-                    products: item.products,
-                  },
-                  value: {
-                    discountOnQuantity: {
-                      effect: {
-                        percentage: discountEffect.percentage,
-                      },
-                      quantity: discountOnQuantity.quantity,
-                    },
-                  },
-                };
-              }
-            }
-            if (value.percentage) {
-              return {
-                _id: temp1._id,
-                appliesOnSubscription: temp1.appliesOnSubscription,
-                appliesOnOnetimePurchase: temp1.appliesOnOnetimePurchase,
-                item: {
-                  products: item.products,
-                },
-                value: {
-                  percentage: value.percentage,
-                },
-              };
-            }
-          } else {
-            const newDiscountCustomerGets = new this.discountCustomerGetsModel({
-              item: savedDiscountItem[0]._id,
-              value: discountValue._id,
-              ...discountCustomerGetsDto,
-            });
-
-            const temp1 = await newDiscountCustomerGets.save();
-            if (value.discountAmount) {
-              return {
-                _id: temp1._id,
-                appliesOnSubscription: temp1.appliesOnSubscription,
-                appliesOnOnetimePurchase: temp1.appliesOnOnetimePurchase,
-                item: {
-                  products: savedDiscountItem[0].products,
-                },
-                value: {
-                  discountAmount: discountValue.discountAmount,
-                },
-              };
-            }
-            if (value.discountOnQuantity) {
-              const discountOnQuantity =
-                await this.discountOnQuantityModel.findById(
-                  discountValue.discountOnQuantity,
-                );
-              const discountEffect = await this.discountEffectModel.findById(
-                discountOnQuantity.effect,
-              );
-              if (value.discountOnQuantity.effect.discountAmount) {
-                const discountAmountEffect =
-                  await this.discountAmountModel.findById(
-                    discountEffect.discountAmount,
-                  );
-
-                return {
-                  _id: temp1._id,
-                  appliesOnSubscription: temp1.appliesOnSubscription,
-                  appliesOnOnetimePurchase: temp1.appliesOnOnetimePurchase,
-                  item: {
-                    products: savedDiscountItem[0].products,
-                  },
-                  value: {
-                    discountOnQuantity: {
-                      effect: {
-                        discountAmount: {
-                          amount: discountAmountEffect.amount,
-                          appliesOnEachItem:
-                            discountAmountEffect.appliesOnEachItem,
-                        },
-                      },
-                      quantity: discountOnQuantity.quantity,
-                    },
-                  },
-                };
-              }
-              if (value.discountOnQuantity.effect.percentage) {
-                return {
-                  _id: temp1._id,
-                  appliesOnSubscription: temp1.appliesOnSubscription,
-                  appliesOnOnetimePurchase: temp1.appliesOnOnetimePurchase,
-                  item: {
-                    products: savedDiscountItem[0].products,
-                  },
-                  value: {
-                    discountOnQuantity: {
-                      effect: {
-                        percentage: discountEffect.percentage,
-                      },
-                      quantity: discountOnQuantity.quantity,
-                    },
-                  },
-                };
-              }
-            }
-            if (value.percentage) {
-              return {
-                _id: temp1._id,
-                appliesOnSubscription: temp1.appliesOnSubscription,
-                appliesOnOnetimePurchase: temp1.appliesOnOnetimePurchase,
-                item: {
-                  products: savedDiscountItem[0].products,
-                },
-                value: {
-                  percentage: value.percentage,
-                },
-              };
-            }
-          }
-        }
-      } else {
-        await Promise.all(
-          discountCustomerGetsWithItem.map(async (index) => {
-            const item_info = index.discountItem_info[0];
-            const findProducts = await this.discountProductsInputModel.findById(
-              item_info.products,
-            );
-
-            if (item.products) {
-              const toAdd = item.products.productsToAdd;
-
-              const productsToAdd = findProducts.productsToAdd;
-
-              for (let i = 0; i < productsToAdd.length; i++) {
-                for (let j = 0; j < toAdd.length; j++) {
-                  if (toAdd[j] == productsToAdd[i]) {
-                    productsToAdds.push(productsToAdd[i]);
-                    saveDiscountItems[0] = index;
-                  }
-                }
-              }
-            }
-          }),
-        );
-
-        if (saveDiscountItems.length != 0) {
-          savedDiscountItem.push({
-            _id: saveDiscountItems[0]._id,
-            products: {
-              productsToAdd: productsToAdds[0],
-            },
-          });
-        } else {
-          const newDiscountItem = new this.discountItemsModel({
-            all: true,
-            collections: null,
-            products: null,
-          });
-          const savedDiscountItem = await newDiscountItem.save();
-          saveDiscountItems.push(savedDiscountItem);
-        }
-
-        await Promise.all(
-          discountCustomerGetsWithValue.map(async (index) => {
-            const discountValue_info = index.discountValue_info[0];
-
-            if (value.discountAmount) {
-              if (discountValue_info.discountAmount == null) {
-                const newDiscountAmount = await this.createDiscountAmount({
-                  amount: value.discountAmount.amount,
-                  appliesOnEachItem: value.discountAmount.appliesOnEachItem,
-                });
-
-                discountAmount.push({
-                  _id: newDiscountAmount._id,
-                  amount: newDiscountAmount.amount,
-                  appliesOnEachItem: newDiscountAmount.appliesOnEachItem,
-                });
-              } else {
-                const discountamount = await this.discountAmountModel.findById(
-                  discountValue_info.discountAmount,
-                );
-
-                if (
-                  this.compareObject(
-                    {
-                      amount: discountamount.amount,
-                      appliesOnEachItem: discountamount.appliesOnEachItem,
-                    },
-                    value.discountAmount,
-                  )
-                ) {
-                  discountAmount.push({
-                    _id: discountamount._id,
-                    amount: discountamount.amount,
-                    appliesOnEachItem: discountamount.appliesOnEachItem,
-                  });
-                }
-              }
-            }
-
-            if (value.discountOnQuantity) {
-              const findDiscountOnQuantity =
-                await this.createDiscountOnQuantity(value.discountOnQuantity);
-              const findDiscountEffect = await this.createDiscountEffect(
-                value.discountOnQuantity.effect,
-              );
-              if (value.discountOnQuantity.effect.discountAmount) {
-                const findDiscountAmountEffect =
-                  await this.discountAmountModel.findById(
-                    findDiscountEffect.discountAmount,
-                  );
-                const { amount, appliesOnEachItem } =
-                  findDiscountAmountEffect as {
-                    amount: number;
-                    appliesOnEachItem: boolean;
-                  };
-                if (
-                  this.compareObject(
-                    { amount, appliesOnEachItem },
-                    value.discountOnQuantity.effect.discountAmount,
-                  )
-                ) {
-                  discountAmountEffect.push(findDiscountAmountEffect);
-                  if (
-                    findDiscountOnQuantity.quantity ==
-                    value.discountOnQuantity.quantity
-                  ) {
-                    discountOnQuantity.push({
-                      _id: findDiscountOnQuantity._id,
-                      effect: {
-                        discountAmount:
-                          value.discountOnQuantity.effect.discountAmount,
-                      },
-                      quantity: value.discountOnQuantity.quantity,
-                    });
-                  }
-                }
-              }
-              if (value.discountOnQuantity.effect.percentage) {
-                if (
-                  value.discountOnQuantity.effect.percentage ==
-                  findDiscountEffect.percentage
-                ) {
-                  discountEffect.push({
-                    _id: findDiscountEffect._id,
-                    discountAmount:
-                      value.discountOnQuantity.effect.discountAmount,
-                    percentage: value.discountOnQuantity.effect.percentage,
-                  });
-                  if (
-                    findDiscountOnQuantity.quantity ==
-                    value.discountOnQuantity.quantity
-                  ) {
-                    discountOnQuantity.push({
-                      _id: findDiscountOnQuantity._id,
-                      effect: {
-                        percentage: value.discountOnQuantity.effect.percentage,
-                      },
-                      quantity: value.discountOnQuantity.quantity,
-                    });
-                  }
-                }
-              }
-              if (value.percentage) {
-                if (discountValue_info.percentage == value.percentage) {
-                  savedDiscountValue.push(index);
-                }
-              }
-            }
-            if (
-              discountCustomerGetsDto.appliesOnSubscription ==
-                index.appliesOnSubscription &&
-              discountCustomerGetsDto.appliesOnOneTimePurchase ==
-                index.appliesOnOneTimePurchase
-            ) {
-              savedDiscountCustomerGets.push(index);
-            }
-          }),
-        );
-
-        if (value.discountAmount) {
-          if (
-            discountAmount.length != 0 &&
-            savedDiscountCustomerGets.length != 0 &&
-            savedDiscountItem.length != 0
-          ) {
-            console.log(discountAmount);
-
-            return {
-              _id: savedDiscountCustomerGets[0]._id,
-              item: {
-                products: savedDiscountItem[0].products,
-              },
-              value: value,
-              appliesOnSubscription:
-                discountCustomerGetsDto.appliesOnSubscription,
-              appliesOnOneTimePurchase:
-                discountCustomerGetsDto.appliesOnOneTimePurchase,
-            };
-          } else {
-            const newDiscountvalue =
-              await this.createDiscountCustomerGetsValue(value);
-            if (item.products) {
-              const temp = await this.createDiscountProductsInput(
-                item.products,
-              );
-
-              const newDiscountItem = new this.discountItemsModel({
-                products: temp._id,
-              });
-
-              const savedDiscountItem = await newDiscountItem.save();
-              console.log(savedDiscountItem);
-              const newDiscountCustomerGets =
-                new this.discountCustomerGetsModel({
-                  item: savedDiscountItem._id,
-                  value: newDiscountvalue._id,
-                  ...discountCustomerGetsDto,
-                });
-
-              return {
-                _id: newDiscountCustomerGets._id,
-                item: {
-                  products: item.products,
-                },
-                value: value,
-                appliesOnSubscription:
-                  discountCustomerGetsDto.appliesOnSubscription,
-                appliesOnOneTimePurchase:
-                  discountCustomerGetsDto.appliesOnOneTimePurchase,
-              };
-            } else {
-              const newDiscountCustomerGets =
-                new this.discountCustomerGetsModel({
-                  item: null,
-                  value: newDiscountvalue._id,
-                  ...discountCustomerGetsDto,
-                });
-
-              return {
-                _id: newDiscountCustomerGets._id,
-                item: {
-                  products: item.products,
-                },
-                value: value,
-                appliesOnSubscription:
-                  discountCustomerGetsDto.appliesOnSubscription,
-                appliesOnOneTimePurchase:
-                  discountCustomerGetsDto.appliesOnOneTimePurchase,
-              };
-            }
-          }
-        }
-        if (value.discountOnQuantity) {
-          if (
-            discountOnQuantity.length != 0 &&
-            savedDiscountCustomerGets.length != 0 &&
-            savedDiscountItem.length != 0
-          ) {
-            return {
-              _id: savedDiscountCustomerGets[0]._id,
-              item: {
-                products: savedDiscountItem[0].products,
-              },
-              value: value,
-              appliesOnSubscription:
-                discountCustomerGetsDto.appliesOnSubscription,
-              appliesOnOneTimePurchase:
-                discountCustomerGetsDto.appliesOnOneTimePurchase,
-            };
-          } else {
-            const newDiscountvalue =
-              await this.createDiscountCustomerGetsValue(value);
-            const temp = await this.createDiscountProductsInput(item.products);
-
-            const newDiscountItem = new this.discountItemsModel({
-              products: temp._id,
-            });
-
-            const savedDiscountItem = await newDiscountItem.save();
-
-            const newDiscountCustomerGets = new this.discountCustomerGetsModel({
-              item: savedDiscountItem._id,
-              value: newDiscountvalue._id,
-              ...discountCustomerGetsDto,
-            });
-            return {
-              _id: newDiscountCustomerGets._id,
-              item: {
-                products: item.products,
-              },
-              value: value,
-              appliesOnSubscription:
-                discountCustomerGetsDto.appliesOnSubscription,
-              appliesOnOneTimePurchase:
-                discountCustomerGetsDto.appliesOnOneTimePurchase,
-            };
-          }
-        }
-        if (value.percentage) {
-          if (
-            savedDiscountValue.length != 0 &&
-            savedDiscountCustomerGets.length != 0 &&
-            saveDiscountItems.length != 0
-          ) {
-            return {
-              _id: savedDiscountCustomerGets[0]._id,
-              item: {
-                products: saveDiscountItems[0].products,
-                all: saveDiscountItems[0].all,
-                collections: saveDiscountItems[0].collections,
-              },
-              value: {
-                discountAmount: savedDiscountValue[0].discountAmount,
-                discountOnQuantity: savedDiscountValue[0].discountOnQuantity,
-                percentage: savedDiscountValue[0].percentage,
-              },
-              appliesOnSubscription:
-                discountCustomerGetsDto.appliesOnSubscription,
-              appliesOnOneTimePurchase:
-                discountCustomerGetsDto.appliesOnOneTimePurchase,
-            };
-          } else {
-            const newDiscountvalue =
-              await this.createDiscountCustomerGetsValue(value);
-
-            if (item.products) {
-              const temp = await this.createDiscountProductsInput(
-                item.products,
-              );
-              const newDiscountItem = new this.discountItemsModel({
-                products: temp._id,
-              });
-              const savedDiscountItem = await newDiscountItem.save();
-              const newDiscountCustomerGets =
-                new this.discountCustomerGetsModel({
-                  item: savedDiscountItem._id,
-                  value: newDiscountvalue._id,
-                  ...discountCustomerGetsDto,
-                });
-              return {
-                _id: newDiscountCustomerGets._id,
-                item: {
-                  products: item.products,
-                },
-                value: {
-                  percentage: newDiscountvalue.percentage,
-                },
-                appliesOnSubscription:
-                  discountCustomerGetsDto.appliesOnSubscription,
-                appliesOnOneTimePurchase:
-                  discountCustomerGetsDto.appliesOnOneTimePurchase,
-              };
-            } else {
-              const newDiscountItem = new this.discountItemsModel({
-                products: null,
-                collections: null,
-                all: true,
-              });
-              const savedDiscountItem = await newDiscountItem.save();
-              const newDiscountCustomerGets =
-                new this.discountCustomerGetsModel({
-                  item: savedDiscountItem._id,
-                  value: newDiscountvalue._id,
-                  ...discountCustomerGetsDto,
-                });
-              const savedDiscountCustomerGets =
-                await newDiscountCustomerGets.save();
-              return {
-                _id: savedDiscountCustomerGets._id,
-                item: {
-                  products: item.products,
-                  collections: item.collections,
-                  all: item.all,
-                },
-                value: {
-                  percentage: newDiscountvalue.percentage,
-                },
-                appliesOnSubscription:
-                  discountCustomerGetsDto.appliesOnSubscription,
-                appliesOnOneTimePurchase:
-                  discountCustomerGetsDto.appliesOnOneTimePurchase,
-              };
-            }
-          }
-        }
+        });
+        discountValue.push(newDiscountValue);
       }
     }
+    const newDiscountCustomerGets = new this.discountCustomerGetsModel({
+      item: discountItem[0]._id,
+      value: discountValue[0]._id,
+      appliesOnOnetimePurchase:
+        discountCustomerGetsDto.appliesOnOneTimePurchase,
+      appliesOnSubscription: discountCustomerGetsDto.appliesOnSubscription,
+    });
+    const savedDiscountCustomerGets = await newDiscountCustomerGets.save();
+    return {
+      _id: savedDiscountCustomerGets._id,
+      item: discountItem[0],
+      value: discountValue[0],
+      appliesOnOnetimePurchase:
+        discountCustomerGetsDto.appliesOnOneTimePurchase,
+      appliesOnSubscription: discountCustomerGetsDto.appliesOnSubscription,
+    };
   }
   async createDiscountOnQuantity({
     effect,
     ...discountOnQuantityDto
   }: DiscountOnQuantityDto) {
-    if (effect && discountOnQuantityDto) {
-      const discountOnQuantityWithDiscountEffect =
-        await this.discountOnQuantityModel.aggregate([
-          {
-            $lookup: {
-              from: 'discounteffects',
-              localField: 'effect',
-              foreignField: '_id',
-              as: 'discountEffect_info',
-            },
+    if (effect.percentage) {
+      const newDiscountEffect = await this.createDiscountEffect(effect);
+      const newDiscountOnQuantity = new this.discountOnQuantityModel({
+        quantity: discountOnQuantityDto.quantity,
+        effect: newDiscountEffect._id,
+      });
+      const savedDiscountOnQuantity = await newDiscountOnQuantity.save();
+      return {
+        _id: savedDiscountOnQuantity._id,
+        quantity: savedDiscountOnQuantity.quantity,
+        effect: {
+          percentage: newDiscountEffect.percentage,
+          discountAmount: null,
+        },
+      };
+    } else if (effect.discountAmount) {
+      const newDiscountEffect = await this.createDiscountEffect({
+        discountAmount: effect.discountAmount,
+        percentage: null,
+      });
+      const newDiscountOnQuantity = new this.discountOnQuantityModel({
+        quantity: discountOnQuantityDto.quantity,
+        effect: newDiscountEffect._id,
+      });
+      const savedDiscountOnQuantity = await newDiscountOnQuantity.save();
+
+      return {
+        _id: savedDiscountOnQuantity._id,
+        quantity: savedDiscountOnQuantity.quantity,
+        effect: {
+          percentage: null,
+          discountAmount: {
+            amount: effect.discountAmount.amount,
+            appliesOnEachItem: effect.discountAmount.appliesOnEachItem,
           },
-        ]);
-      if (discountOnQuantityWithDiscountEffect.length == 0) {
-        const savedDiscountEffect = await this.createDiscountEffect(effect);
-
-        const newDiscountOnQuantity = new this.discountOnQuantityModel({
-          effect: savedDiscountEffect._id,
-          ...discountOnQuantityDto,
-        });
-        return newDiscountOnQuantity.save();
-      } else {
-        const savedDiscountEffect = [];
-        const savedDiscountAmount = [];
-        const savedDiscountOnQuantity = [];
-        await Promise.all(
-          discountOnQuantityWithDiscountEffect.map(async (index) => {
-            const discountEffect_info = index.discountEffect_info[0];
-            const discountAmount = await this.discountAmountModel.findById(
-              discountEffect_info.discountAmount,
-            );
-            if (effect.discountAmount) {
-              const temp = {
-                amount: effect.discountAmount.amount,
-                appliesOnEachItem: effect.discountAmount.appliesOnEachItem,
-              };
-
-              const { amount, appliesOnEachItem } = discountAmount as {
-                amount: number;
-                appliesOnEachItem: boolean;
-              };
-              if (this.compareObject({ amount, appliesOnEachItem }, temp)) {
-                savedDiscountAmount.push(index);
-              }
-            }
-            if (effect.percentage) {
-              if (effect.percentage == discountEffect_info.percentage) {
-                savedDiscountEffect.push(index);
-              }
-            }
-            if ((index.quantity = discountOnQuantityDto.quantity)) {
-              savedDiscountOnQuantity.push(index);
-            }
-          }),
-        );
-        if (effect.discountAmount) {
-          if (
-            savedDiscountAmount.length != 0 &&
-            savedDiscountOnQuantity.length != 0
-          ) {
-            return {
-              _id: savedDiscountAmount[0]._id,
-              discountAmount: effect.discountAmount,
-              quantity: discountOnQuantityDto.quantity,
-            };
-          } else {
-            const newDiscountEffect = await this.createDiscountEffect(effect);
-            const newDiscountOnQuantity = new this.discountOnQuantityModel({
-              effect: newDiscountEffect._id,
-              ...discountOnQuantityDto,
-            });
-            const savedDiscountOnQuantity = await newDiscountOnQuantity.save();
-            return {
-              _id: savedDiscountOnQuantity._id,
-              effect: effect,
-              quantity: discountOnQuantityDto.quantity,
-            };
-          }
-        }
-        if (effect.percentage) {
-          if (
-            savedDiscountEffect.length != 0 &&
-            savedDiscountOnQuantity.length != 0
-          ) {
-            return {
-              _id: savedDiscountEffect[0]._id,
-              effect: effect,
-              quantity: discountOnQuantityDto.quantity,
-            };
-          } else {
-            const newDiscountEffect = await this.createDiscountEffect(effect);
-
-            const newDiscountOnQuantity = new this.discountOnQuantityModel({
-              effect: newDiscountEffect._id,
-              ...discountOnQuantityDto,
-            });
-            const savedDiscountOnQuantity = await newDiscountOnQuantity.save();
-            return {
-              _id: savedDiscountOnQuantity._id,
-              effect: effect,
-              quantity: discountOnQuantityDto.quantity,
-            };
-          }
-        }
-      }
+        },
+      };
     }
   }
   async createDiscountCustomerGetsValue({
@@ -1372,301 +654,73 @@ export class DiscountBasicService {
     discountOnQuantity,
     ...discountCustomerGetsValueDto
   }: DiscountCustomerGetsValuesDto) {
-    const savedAmount = [];
-    const savedAmountEffect = [];
-    const savedEffect = [];
+    const savedDiscountAmount = [];
     const savedDiscountOnQuantity = [];
-    const savedDiscountCustomerGetsValues = [];
-    if (discountCustomerGetsValueDto.percentage) {
-      const discountCustomerGetsValues =
-        await this.discountCustomerGetsValueModel.find();
-      if (discountCustomerGetsValues.length == 0) {
-        const newDiscountCustomerGetsValue =
-          new this.discountCustomerGetsValueModel({
-            ...discountCustomerGetsValueDto,
-          });
-        const savedDiscountCustomerGetsValue =
-          await newDiscountCustomerGetsValue.save();
-        return {
-          _id: savedDiscountCustomerGetsValue._id,
-          percentage: discountCustomerGetsValueDto.percentage,
-        };
-      } else {
-        await Promise.all(
-          discountCustomerGetsValues.map(async (index) => {
-            if (index.percentage == discountCustomerGetsValueDto.percentage) {
-              savedDiscountCustomerGetsValues.push(index);
-            }
-          }),
-        );
-
-        if (savedDiscountCustomerGetsValues.length == 0) {
-          const newDiscountCustomerGetsValue =
-            new this.discountCustomerGetsValueModel({
-              discountAmount: null,
-              discountOnQuantity: null,
-              percentage: discountCustomerGetsValueDto.percentage,
-            });
-          const saveDiscountCustomerGetsValue =
-            await newDiscountCustomerGetsValue.save();
-          savedDiscountCustomerGetsValues.push(saveDiscountCustomerGetsValue);
-        }
-
-        return {
-          _id: savedDiscountCustomerGetsValues[0]._id,
-          discountAmount: savedDiscountCustomerGetsValues[0].discountAmount,
-          discountOnQuantity:
-            savedDiscountCustomerGetsValues[0].discountOnQuantity,
-          percentage: savedDiscountCustomerGetsValues[0].percentage,
-        };
-      }
-    }
+    const savedPercentage = [];
     if (discountAmount) {
-      const discountCustomerGetsValueWithDiscountAmount =
-        await this.discountCustomerGetsValueModel.aggregate([
-          {
-            $lookup: {
-              from: 'discountamounts',
-              localField: 'discountAmount',
-              foreignField: '_id',
-              as: 'discountAmount_info',
-            },
-          },
-        ]);
-      if (discountCustomerGetsValueWithDiscountAmount.length == 0) {
-        const discountAmounts = await this.discountAmountModel.find();
-        if (discountAmounts.length == 0) {
-          const newDiscountAmount =
-            await this.createDiscountAmount(discountAmount);
-          const newDiscountCustomerGetsValue =
-            new this.discountCustomerGetsValueModel({
-              discountAmount: newDiscountAmount._id,
-              ...discountCustomerGetsValueDto,
-            });
-          const savedDiscountCustomerGetsValue =
-            await newDiscountCustomerGetsValue.save();
-          return {
-            _id: savedDiscountCustomerGetsValue._id,
-            discountAmount: {
-              amount: newDiscountAmount.amount,
-              appliesOnEachItem: newDiscountAmount.appliesOnEachItem,
-            },
-          };
-        } else {
-          discountAmounts.map((index) => {
-            if (
-              this.compareObject(
-                {
-                  amount: index.amount,
-                  appliesOnEachItem: index.appliesOnEachItem,
-                },
-                discountAmount,
-              )
-            ) {
-              savedAmount.push(index);
-            }
-          });
-          if (savedAmount.length == 0) {
-            const newDiscountAmount =
-              await this.createDiscountAmount(discountAmount);
-            const newDiscountCustomerGetsValue =
-              new this.discountCustomerGetsValueModel({
-                discountAmount: newDiscountAmount._id,
-                ...discountCustomerGetsValueDto,
-              });
-            const savedDiscountCustomerGetsValue =
-              await newDiscountCustomerGetsValue.save();
-            return {
-              _id: savedDiscountCustomerGetsValue._id,
-              discountAmount: discountAmount,
-            };
-          } else {
-            const newDiscountCustomerGetsValue =
-              new this.discountCustomerGetsValueModel({
-                discountAmount: savedAmount[0]._id,
-                ...discountCustomerGetsValueDto,
-              });
-            const savedDiscountCustomerGetsValue =
-              await newDiscountCustomerGetsValue.save();
-            return {
-              _id: savedDiscountCustomerGetsValue._id,
-              discountAmount: discountAmount,
-            };
-          }
-        }
-      } else {
-        await Promise.all(
-          discountCustomerGetsValueWithDiscountAmount.map(async (index) => {
-            const discountAmount_info = index.discountAmount_info[0];
-            if (!discountAmount_info) {
-              const newDiscountAmount = await this.createDiscountAmount({
-                amount: discountAmount.amount,
-                appliesOnEachItem: discountAmount.appliesOnEachItem,
-              });
-              savedAmount.push({
-                _id: newDiscountAmount._id,
-                amount: newDiscountAmount.amount,
-                appliesOnEachItem: newDiscountAmount.appliesOnEachItem,
-              });
-            } else {
-              const { amount, appliesOnEachItem } = discountAmount_info as {
-                amount: number;
-                appliesOnEachItem: boolean;
-              };
-              if (
-                this.compareObject(
-                  { amount, appliesOnEachItem },
-                  discountAmount,
-                )
-              ) {
-                savedAmount.push(discountAmount_info);
-              }
-            }
-          }),
-        );
-        if (savedAmount.length != 0) {
-          return {
-            _id: savedAmount[0]._id,
-            discountAmount: discountAmount,
-          };
-        } else {
-          const newDiscountAmount =
-            await this.createDiscountAmount(discountAmount);
-          const newDiscountCustomerGetsValue =
-            new this.discountCustomerGetsValueModel({
-              discountAmount: newDiscountAmount._id,
-              ...discountCustomerGetsValueDto,
-            });
-          const savedDiscountCustomerGetsValue =
-            await newDiscountCustomerGetsValue.save();
-          return {
-            _id: savedDiscountCustomerGetsValue._id,
-            discountAmount: discountAmount,
-          };
-        }
-      }
-    }
+      const newDiscountAmount = await this.createDiscountAmount(discountAmount);
+      const newDisscountValue = new this.discountCustomerGetsValueModel({
+        percentage: null,
+        discountAmount: newDiscountAmount._id,
+        discountOnQuantity: null,
+      });
+      const savedDiscountValue = await newDisscountValue.save();
 
-    if (discountOnQuantity) {
-      const discountCustomerGetsValueWithDiscountOnQuantity =
-        await this.discountCustomerGetsValueModel.aggregate([
-          {
-            $lookup: {
-              from: 'discountonquantities',
-              localField: 'discountOnQuantity',
-              foreignField: '_id',
-              as: 'discountOnQuantity_info',
-            },
-          },
-        ]);
-      if (discountCustomerGetsValueWithDiscountOnQuantity.length == 0) {
-        const newDiscountOnQuantity =
-          await this.createDiscountOnQuantity(discountOnQuantity);
-        const newDiscountCustomerGetsValue =
-          new this.discountCustomerGetsValueModel({
-            discountOnQuantity: newDiscountOnQuantity._id,
-            ...discountCustomerGetsValueDto,
-          });
-        const savedDiscountCustomerGetsValue =
-          await newDiscountCustomerGetsValue.save();
+      return {
+        _id: savedDiscountValue._id,
+        percentage: null,
+        discountOnQuantity: null,
+        discountAmount: newDiscountAmount,
+      };
+    } else if (discountOnQuantity) {
+      const newDiscountOnQuantity =
+        await this.createDiscountOnQuantity(discountOnQuantity);
+      const newDisscountValue = new this.discountCustomerGetsValueModel({
+        percentage: null,
+        discountAmount: null,
+        discountOnQuantity: newDiscountOnQuantity._id,
+      });
+      const savedDiscountValue = await newDisscountValue.save();
+      if (discountOnQuantity.effect.discountAmount) {
         return {
-          _id: savedDiscountCustomerGetsValue._id,
-          discountOnQuantity: discountOnQuantity,
+          _id: savedDiscountValue._id,
+          percentage: null,
+          discountOnQuantity: {
+            quantity: newDiscountOnQuantity.quantity,
+            effect: {
+              discountAmount: discountOnQuantity.effect.discountAmount,
+              percentage: null,
+            },
+          },
+          discountAmount: null,
         };
-      } else {
-        await Promise.all(
-          discountCustomerGetsValueWithDiscountOnQuantity.map(async (index) => {
-            const discountOnQuantity_info = index.discountOnQuantity_info[0];
-
-            const discountEffect = await this.discountEffectModel.findById(
-              discountOnQuantity_info?.effect,
-            );
-            if (discountOnQuantity.effect.discountAmount) {
-              const findDiscountAmount =
-                await this.discountAmountModel.findById(
-                  discountEffect.discountAmount,
-                );
-              const { amount, appliesOnEachItem } = findDiscountAmount as {
-                amount: number;
-                appliesOnEachItem: boolean;
-              };
-              if (
-                this.compareObject(
-                  { amount, appliesOnEachItem },
-                  discountOnQuantity.effect.discountAmount,
-                )
-              ) {
-                savedAmountEffect.push(findDiscountAmount);
-              }
-              if (
-                discountOnQuantity_info.quantity == discountOnQuantity.quantity
-              ) {
-                savedDiscountOnQuantity.push(discountOnQuantity_info);
-              }
-            }
-            if (discountOnQuantity.effect.percentage) {
-              if (
-                discountEffect.percentage ==
-                discountOnQuantity.effect.percentage
-              ) {
-                savedEffect.push(discountEffect);
-                if (
-                  discountOnQuantity_info.quantity ==
-                  discountOnQuantity.quantity
-                ) {
-                  savedDiscountOnQuantity.push(discountOnQuantity_info);
-                }
-              }
-            }
-          }),
-        );
-        if (discountOnQuantity.effect.discountAmount) {
-          if (
-            savedDiscountOnQuantity.length != 0 &&
-            savedAmountEffect.length != 0
-          ) {
-            return {
-              _id: savedDiscountOnQuantity[0]._id,
-              discountOnQuantity: discountOnQuantity,
-            };
-          } else {
-            const newDiscountOnQuantity =
-              await this.createDiscountOnQuantity(discountOnQuantity);
-            const newDiscountCustomerGetsValue =
-              new this.discountCustomerGetsValueModel({
-                discountOnQuantity: newDiscountOnQuantity._id,
-                ...discountCustomerGetsValueDto,
-              });
-            const savedDiscountCustomerGetsValue =
-              await newDiscountCustomerGetsValue.save();
-            return {
-              _id: savedDiscountCustomerGetsValue._id,
-              discountOnQuantity: discountOnQuantity,
-            };
-          }
-        }
-        if (discountOnQuantity.effect.percentage) {
-          if (savedEffect.length != 0 && savedDiscountOnQuantity.length != 0) {
-            return {
-              _id: savedDiscountOnQuantity[0]._id,
-              percentage: savedEffect[0].percentage,
-            };
-          } else {
-            const newDiscountOnQuantity =
-              await this.createDiscountOnQuantity(discountOnQuantity);
-            const newDiscountCustomerGetsValue =
-              new this.discountCustomerGetsValueModel({
-                discountOnQuantity: newDiscountOnQuantity._id,
-              });
-            const savedDiscountCustomerGetsValue =
-              await newDiscountCustomerGetsValue.save();
-            return {
-              _id: savedDiscountCustomerGetsValue._id,
-              discountOnQuantity: discountOnQuantity,
-            };
-          }
-        }
+      } else if (discountOnQuantity.effect.percentage) {
+        return {
+          _id: savedDiscountValue._id,
+          percentage: null,
+          discountOnQuantity: {
+            quantity: newDiscountOnQuantity.quantity,
+            effect: {
+              discountAmount: null,
+              percentage: discountOnQuantity.effect.percentage,
+            },
+          },
+          discountAmount: null,
+        };
       }
+    } else if (discountCustomerGetsValueDto.percentage) {
+      const newDisscountValue = new this.discountCustomerGetsValueModel({
+        percentage: discountCustomerGetsValueDto.percentage,
+        discountAmount: null,
+        discountOnQuantity: null,
+      });
+      const savedDiscountValue = await newDisscountValue.save();
+      return {
+        _id: savedDiscountValue._id,
+        percentage: discountCustomerGetsValueDto.percentage,
+        discountOnQuantity: null,
+        discountAmount: null,
+      };
     }
   }
   async createDiscountEffect({
@@ -1734,16 +788,25 @@ export class DiscountBasicService {
           const discountAmount_info = index.discountAmount_info[0];
 
           if (discountAmount) {
-            const { amount, appliesOnEachItem } = discountAmount_info as {
-              _id: any;
-              amount: number;
-              appliesOnEachItem: boolean;
-            };
+            if (discountAmount_info != null) {
+              const { amount, appliesOnEachItem } = discountAmount_info as {
+                _id: any;
+                amount: number;
+                appliesOnEachItem: boolean;
+              };
 
-            if (
-              this.compareObject({ amount, appliesOnEachItem }, discountAmount)
-            ) {
-              savedDiscountAmount.push(index);
+              if (
+                this.compareObject(
+                  { amount, appliesOnEachItem },
+                  discountAmount,
+                )
+              ) {
+                savedDiscountAmount.push(index);
+              }
+            } else {
+              const newDiscountAmount =
+                await this.createDiscountAmount(discountAmount);
+              savedDiscountAmount.push(newDiscountAmount);
             }
           }
           if (discountEffectDto) {
@@ -1897,8 +960,7 @@ export class DiscountBasicService {
           return minimumRequirement[0];
         }
       }
-    }
-    if (discountMinimumRequirement.subtotal) {
+    } else if (discountMinimumRequirement.subtotal) {
       const minimumRequirements =
         await this.discountMinimumRequirementModel.find();
       if (minimumRequirements.length == 0) {
@@ -1917,6 +979,32 @@ export class DiscountBasicService {
             new this.discountMinimumRequirementModel(
               discountMinimumRequirement,
             );
+          return newMinimumRequirement.save();
+        } else {
+          return minimumRequirement[0];
+        }
+      }
+    } else {
+      const minimumRequirements =
+        await this.discountMinimumRequirementModel.find();
+
+      if (minimumRequirements.length == 0) {
+        const newMinimumRequirement = new this.discountMinimumRequirementModel(
+          discountMinimumRequirement,
+        );
+        return newMinimumRequirement.save();
+      } else {
+        minimumRequirements.map((value) => {
+          if (value.quantity == null && value.subtotal == null) {
+            minimumRequirement.push(value);
+          }
+        });
+        if (minimumRequirement.length == 0) {
+          const newMinimumRequirement =
+            new this.discountMinimumRequirementModel(
+              discountMinimumRequirement,
+            );
+
           return newMinimumRequirement.save();
         } else {
           return minimumRequirement[0];

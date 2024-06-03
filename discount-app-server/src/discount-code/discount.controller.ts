@@ -38,7 +38,6 @@ export class DiscountController {
       discount.startDate.date;
 
     const formattedStartDate = `${year}-${(month < 10 ? '0' : '') + month}-${(day < 10 ? '0' : '') + day}T${(hour < 10 ? '0' : '') + hour}:${(minute < 10 ? '0' : '') + minute}:${(second < 10 ? '0' : '') + second}.${('00' + millisecond).slice(-3)}Z`;
-
     if (discount.id == 'automatic') {
       if (discount.shippingMinimumRequirement.quantity.choose) {
         if (discount.purchaseType.both) {
@@ -212,167 +211,91 @@ export class DiscountController {
             },
           );
         }
-      }
-    } else {
-      if (discount.shippingMinimumRequirement.quantity.choose) {
+      } else {
         if (discount.purchaseType.both) {
-          return this.discountCodeService.createDiscountCodeFreeShipping({
-            appliesOnOneTimePurchase: true,
-            appliesOnSubscription: true,
-            maximumShippingPrice: null,
-            recurringCycleLimit: null,
-            discountMinimumRequirement: {
-              quantity: discount.shippingMinimumRequirement.quantity.amount,
-              subtotal: null,
-            },
-            basicDetail: {
-              combinesWith: {
-                orderDiscounts: discount.combinations.order,
-                productDiscounts: discount.combinations.product,
-                shippingDiscounts: discount.combinations.shipping,
+          return this.discountAutomaticService.createAutomaticDiscountFreeShipping(
+            {
+              appliesOnOneTimePurchase: true,
+              appliesOnSubscription: true,
+              maximumShippingPrice: null,
+              recurringCycleLimit: null,
+              discountMinimumRequirement: {
+                quantity: null,
+                subtotal: null,
               },
-              appliesOncePerCustomer: discount.maxUses.usePerCustomer.choose,
-              code: discount.title,
-              title: discount.title,
-              usageLimit: null,
-              startsAt: formattedStartDate,
-              endsAt: discount.endDate.date,
-              usePerOrderLimit: discount.usesPerOrder.amount,
+              basicDetail: {
+                combinesWith: {
+                  orderDiscounts: discount.combinations.order,
+                  productDiscounts: discount.combinations.product,
+                  shippingDiscounts: discount.combinations.shipping,
+                },
+                appliesOncePerCustomer: discount.maxUses.usePerCustomer.choose,
+                code: discount.title,
+                title: discount.title,
+                usageLimit: null,
+                startsAt: formattedStartDate,
+                endsAt: discount.endDate.date,
+                usePerOrderLimit: discount.usesPerOrder.amount,
+              },
+              destination: { all: true },
             },
-            destination: { all: true },
-          });
+          );
         } else if (discount.purchaseType.oneTimePurchase) {
-          return this.discountCodeService.createDiscountCodeFreeShipping({
-            appliesOnOneTimePurchase: true,
-            appliesOnSubscription: false,
-            maximumShippingPrice: null,
-            recurringCycleLimit: null,
-            discountMinimumRequirement: {
-              quantity: discount.shippingMinimumRequirement.quantity.amount,
-              subtotal: null,
-            },
-            basicDetail: {
-              combinesWith: {
-                orderDiscounts: discount.combinations.order,
-                productDiscounts: discount.combinations.product,
-                shippingDiscounts: discount.combinations.shipping,
+          return this.discountAutomaticService.createAutomaticDiscountFreeShipping(
+            {
+              appliesOnOneTimePurchase: true,
+              appliesOnSubscription: false,
+              maximumShippingPrice: null,
+              recurringCycleLimit: null,
+              discountMinimumRequirement: {
+                quantity: null,
+                subtotal: null,
               },
-              appliesOncePerCustomer: discount.maxUses.usePerCustomer.choose,
-              code: discount.title,
-              title: discount.title,
-              usageLimit: null,
-              startsAt: formattedStartDate,
-              endsAt: discount.endDate.date,
-              usePerOrderLimit: discount.usesPerOrder.amount,
+              basicDetail: {
+                combinesWith: {
+                  orderDiscounts: discount.combinations.order,
+                  productDiscounts: discount.combinations.product,
+                  shippingDiscounts: discount.combinations.shipping,
+                },
+                appliesOncePerCustomer: discount.maxUses.usePerCustomer.choose,
+                code: discount.title,
+                title: discount.title,
+                usageLimit: null,
+                startsAt: formattedStartDate,
+                endsAt: discount.endDate.date,
+                usePerOrderLimit: discount.usesPerOrder.amount,
+              },
+              destination: { all: true },
             },
-            destination: { all: true },
-          });
+          );
         } else if (discount.purchaseType.subscription) {
-          return this.discountCodeService.createDiscountCodeFreeShipping({
-            appliesOnOneTimePurchase: false,
-            appliesOnSubscription: true,
-            maximumShippingPrice: null,
-            recurringCycleLimit: null,
-            discountMinimumRequirement: {
-              quantity: discount.shippingMinimumRequirement.quantity.amount,
-              subtotal: null,
-            },
-            basicDetail: {
-              combinesWith: {
-                orderDiscounts: discount.combinations.order,
-                productDiscounts: discount.combinations.product,
-                shippingDiscounts: discount.combinations.shipping,
+          return this.discountAutomaticService.createAutomaticDiscountFreeShipping(
+            {
+              appliesOnOneTimePurchase: false,
+              appliesOnSubscription: true,
+              maximumShippingPrice: null,
+              recurringCycleLimit: null,
+              discountMinimumRequirement: {
+                quantity: null,
+                subtotal: null,
               },
-              appliesOncePerCustomer: discount.maxUses.usePerCustomer.choose,
-              code: discount.title,
-              title: discount.title,
-              usageLimit: null,
-              startsAt: formattedStartDate,
-              endsAt: discount.endDate.date,
-              usePerOrderLimit: discount.usesPerOrder.amount,
-            },
-            destination: { all: true },
-          });
-        }
-      } else if (discount.shippingMinimumRequirement.subtotal.choose) {
-        if (discount.purchaseType.both) {
-          return this.discountCodeService.createDiscountCodeFreeShipping({
-            appliesOnOneTimePurchase: true,
-            appliesOnSubscription: true,
-            maximumShippingPrice: null,
-            recurringCycleLimit: null,
-            discountMinimumRequirement: {
-              quantity: null,
-              subtotal: discount.shippingMinimumRequirement.subtotal.amount,
-            },
-            basicDetail: {
-              combinesWith: {
-                orderDiscounts: discount.combinations.order,
-                productDiscounts: discount.combinations.product,
-                shippingDiscounts: discount.combinations.shipping,
+              basicDetail: {
+                combinesWith: {
+                  orderDiscounts: discount.combinations.order,
+                  productDiscounts: discount.combinations.product,
+                  shippingDiscounts: discount.combinations.shipping,
+                },
+                appliesOncePerCustomer: discount.maxUses.usePerCustomer.choose,
+                code: discount.title,
+                title: discount.title,
+                usageLimit: null,
+                startsAt: formattedStartDate,
+                endsAt: discount.endDate.date,
+                usePerOrderLimit: discount.usesPerOrder.amount,
               },
-              appliesOncePerCustomer: discount.maxUses.usePerCustomer.choose,
-              code: discount.title,
-              title: discount.title,
-              usageLimit: null,
-              startsAt: formattedStartDate,
-              endsAt: discount.endDate.date,
-              usePerOrderLimit: discount.usesPerOrder.amount,
+              destination: { all: true },
             },
-            destination: { all: true },
-          });
-        } else if (discount.purchaseType.oneTimePurchase) {
-          return this.discountCodeService.createDiscountCodeFreeShipping({
-            appliesOnOneTimePurchase: true,
-            appliesOnSubscription: false,
-            maximumShippingPrice: null,
-            recurringCycleLimit: null,
-            discountMinimumRequirement: {
-              quantity: null,
-              subtotal: discount.shippingMinimumRequirement.subtotal.amount,
-            },
-            basicDetail: {
-              combinesWith: {
-                orderDiscounts: discount.combinations.order,
-                productDiscounts: discount.combinations.product,
-                shippingDiscounts: discount.combinations.shipping,
-              },
-              appliesOncePerCustomer: discount.maxUses.usePerCustomer.choose,
-              code: discount.title,
-              title: discount.title,
-              usageLimit: null,
-              startsAt: formattedStartDate,
-              endsAt: discount.endDate.date,
-              usePerOrderLimit: discount.usesPerOrder.amount,
-            },
-            destination: { all: true },
-          });
-        } else if (discount.purchaseType.subscription) {
-          return this.discountCodeService.createDiscountCodeFreeShipping({
-            appliesOnOneTimePurchase: false,
-            appliesOnSubscription: true,
-            maximumShippingPrice: null,
-            recurringCycleLimit: null,
-            discountMinimumRequirement: {
-              quantity: null,
-              subtotal: discount.shippingMinimumRequirement.subtotal.amount,
-            },
-            basicDetail: {
-              combinesWith: {
-                orderDiscounts: discount.combinations.order,
-                productDiscounts: discount.combinations.product,
-                shippingDiscounts: discount.combinations.shipping,
-              },
-              appliesOncePerCustomer: discount.maxUses.usePerCustomer.choose,
-              code: discount.title,
-              title: discount.title,
-              usageLimit: null,
-              startsAt: formattedStartDate,
-              endsAt: discount.endDate.date,
-              usePerOrderLimit: discount.usesPerOrder.amount,
-            },
-            destination: { all: true },
-          });
+          );
         }
       }
     }
@@ -430,7 +353,7 @@ export class DiscountController {
     const formattedStartDate = `${year}-${(month < 10 ? '0' : '') + month}-${(day < 10 ? '0' : '') + day}T${(hour < 10 ? '0' : '') + hour}:${(minute < 10 ? '0' : '') + minute}:${(second < 10 ? '0' : '') + second}.${('00' + millisecond).slice(-3)}Z`;
 
     if (discount.id == 'automatic') {
-      if (discount.minimumRequirement.quantity) {
+      if (discount.minimumRequirement.quantity.choose) {
         if (discount.customerGets.discountValue.percentage.choose) {
           return this.discountAutomaticService.createDiscountAutomaticBxGy({
             usePerOrderLimit: discount.maxUses.useInTotal.amount,
@@ -482,7 +405,9 @@ export class DiscountController {
                   quantity: discount.customerGets.quantity,
                   effect: {
                     percentage:
-                      discount.customerGets.discountValue.percentage.amount,
+                      parseFloat(
+                        discount.customerGets.discountValue.percentage.amount,
+                      ) / 100,
                     discountAmount: null,
                   },
                 },
@@ -504,7 +429,7 @@ export class DiscountController {
               code: discount.title,
               title: discount.title,
               usageLimit: null,
-              startsAt: discount.startDate,
+              startsAt: formattedStartDate,
               endsAt: discount.endDate.date,
               usePerOrderLimit: discount.usesPerOrder.amount,
             },
@@ -555,9 +480,136 @@ export class DiscountController {
             },
           });
         }
+      } else if (discount.minimumRequirement.subtotal) {
+        if (discount.customerGets.discountValue.percentage.choose) {
+          return this.discountAutomaticService.createDiscountAutomaticBxGy({
+            usePerOrderLimit: discount.maxUses.useInTotal.amount,
+            basicDetail: {
+              combinesWith: {
+                orderDiscounts: discount.combinations.order,
+                productDiscounts: discount.combinations.product,
+                shippingDiscounts: discount.combinations.shipping,
+              },
+              appliesOncePerCustomer: discount.maxUses.usePerCustomer.choose,
+              code: discount.title,
+              title: discount.title,
+              usageLimit: null,
+              startsAt: formattedStartDate,
+              endsAt: discount.endDate.date,
+              usePerOrderLimit: discount.usesPerOrder.amount,
+            },
+            discountCustomerBuys: {
+              item: {
+                products: {
+                  productsToAdd: discountCustomerBuys,
+                  productsToRemove: [],
+                  productVariantsToRemove: [],
+                  productVariantsToAdd: [],
+                },
+                all: false,
+                collections: null,
+              },
+              value: {
+                quantity: null,
+                amount: discount.minimumRequirement.amount,
+              },
+            },
+            discountCustomerGets: {
+              appliesOnOneTimePurchase: true,
+              appliesOnSubscription: false,
+              item: {
+                products: {
+                  productsToAdd: discountCustomerGets,
+                  productsToRemove: [],
+                  productVariantsToRemove: [],
+                  productVariantsToAdd: [],
+                },
+                all: false,
+                collections: null,
+              },
+              value: {
+                discountOnQuantity: {
+                  quantity: discount.customerGets.quantity,
+                  effect: {
+                    percentage:
+                      parseFloat(
+                        discount.customerGets.discountValue.percentage.amount,
+                      ) / 100,
+                    discountAmount: null,
+                  },
+                },
+                discountAmount: null,
+                percentage: null,
+              },
+            },
+          });
+        } else if (discount.customerGets.discountValue.amountOff.choose) {
+          return this.discountAutomaticService.createDiscountAutomaticBxGy({
+            usePerOrderLimit: discount.usesPerOrder.amount,
+            basicDetail: {
+              combinesWith: {
+                orderDiscounts: discount.combinations.order,
+                productDiscounts: discount.combinations.product,
+                shippingDiscounts: discount.combinations.shipping,
+              },
+              appliesOncePerCustomer: discount.maxUses.usePerCustomer.choose,
+              code: discount.title,
+              title: discount.title,
+              usageLimit: null,
+              startsAt: formattedStartDate,
+              endsAt: discount.endDate.date,
+              usePerOrderLimit: discount.usesPerOrder.amount,
+            },
+            discountCustomerBuys: {
+              item: {
+                products: {
+                  productsToAdd: discountCustomerBuys,
+                  productsToRemove: [],
+                  productVariantsToRemove: [],
+                  productVariantsToAdd: [],
+                },
+                all: false,
+                collections: null,
+              },
+              value: {
+                quantity: null,
+                amount: discount.minimumRequirement.amount,
+              },
+            },
+            discountCustomerGets: {
+              appliesOnOneTimePurchase: true,
+              appliesOnSubscription: false,
+              item: {
+                products: {
+                  productsToAdd: discountCustomerGets,
+                  productsToRemove: [],
+                  productVariantsToRemove: [],
+                  productVariantsToAdd: [],
+                },
+                all: false,
+                collections: null,
+              },
+              value: {
+                discountOnQuantity: {
+                  quantity: discount.customerGets.quantity,
+                  effect: {
+                    percentage: null,
+                    discountAmount: {
+                      amount:
+                        discount.customerGets.discountValue.amountOff.amount,
+                      appliesOnEachItem: true,
+                    },
+                  },
+                },
+                discountAmount: null,
+                percentage: null,
+              },
+            },
+          });
+        }
       }
-    } else {
-      if (discount.minimumRequirement.quantity) {
+    } else if (discount.id == 'code') {
+      if (discount.minimumRequirement.quantity.choose) {
         if (discount.customerGets.discountValue.percentage.choose) {
           return this.discountCodeService.createDiscountCodeBxGy({
             usePerOrderLimit: discount.maxUses.useInTotal.amount,
@@ -609,7 +661,9 @@ export class DiscountController {
                   quantity: discount.customerGets.quantity,
                   effect: {
                     percentage:
-                      discount.customerGets.discountValue.percentage.amount,
+                      parseFloat(
+                        discount.customerGets.discountValue.percentage.amount,
+                      ) / 100,
                     discountAmount: null,
                   },
                 },
@@ -631,7 +685,7 @@ export class DiscountController {
               code: discount.title,
               title: discount.title,
               usageLimit: null,
-              startsAt: discount.startDate,
+              startsAt: formattedStartDate,
               endsAt: discount.endDate.date,
               usePerOrderLimit: discount.usesPerOrder.amount,
             },
@@ -649,6 +703,133 @@ export class DiscountController {
               value: {
                 quantity: discount.minimumRequirement.amount,
                 amount: null,
+              },
+            },
+            discountCustomerGets: {
+              appliesOnOneTimePurchase: true,
+              appliesOnSubscription: false,
+              item: {
+                products: {
+                  productsToAdd: discountCustomerGets,
+                  productsToRemove: [],
+                  productVariantsToRemove: [],
+                  productVariantsToAdd: [],
+                },
+                all: false,
+                collections: null,
+              },
+              value: {
+                discountOnQuantity: {
+                  quantity: discount.customerGets.quantity,
+                  effect: {
+                    percentage: null,
+                    discountAmount: {
+                      amount:
+                        discount.customerGets.discountValue.amountOff.amount,
+                      appliesOnEachItem: true,
+                    },
+                  },
+                },
+                discountAmount: null,
+                percentage: null,
+              },
+            },
+          });
+        }
+      } else if (discount.minimumRequirement.subtotal) {
+        if (discount.customerGets.discountValue.percentage.choose) {
+          return this.discountCodeService.createDiscountCodeBxGy({
+            usePerOrderLimit: discount.maxUses.useInTotal.amount,
+            basicDetail: {
+              combinesWith: {
+                orderDiscounts: discount.combinations.order,
+                productDiscounts: discount.combinations.product,
+                shippingDiscounts: discount.combinations.shipping,
+              },
+              appliesOncePerCustomer: discount.maxUses.usePerCustomer.choose,
+              code: discount.title,
+              title: discount.title,
+              usageLimit: null,
+              startsAt: formattedStartDate,
+              endsAt: discount.endDate.date,
+              usePerOrderLimit: discount.usesPerOrder.amount,
+            },
+            discountCustomerBuys: {
+              item: {
+                products: {
+                  productsToAdd: discountCustomerBuys,
+                  productsToRemove: [],
+                  productVariantsToRemove: [],
+                  productVariantsToAdd: [],
+                },
+                all: false,
+                collections: null,
+              },
+              value: {
+                quantity: null,
+                amount: discount.minimumRequirement.amount,
+              },
+            },
+            discountCustomerGets: {
+              appliesOnOneTimePurchase: true,
+              appliesOnSubscription: false,
+              item: {
+                products: {
+                  productsToAdd: discountCustomerGets,
+                  productsToRemove: [],
+                  productVariantsToRemove: [],
+                  productVariantsToAdd: [],
+                },
+                all: false,
+                collections: null,
+              },
+              value: {
+                discountOnQuantity: {
+                  quantity: discount.customerGets.quantity,
+                  effect: {
+                    percentage:
+                      parseFloat(
+                        discount.customerGets.discountValue.percentage.amount,
+                      ) / 100,
+                    discountAmount: null,
+                  },
+                },
+                discountAmount: null,
+                percentage: null,
+              },
+            },
+          });
+        } else if (discount.customerGets.discountValue.amountOff.choose) {
+          return this.discountCodeService.createDiscountCodeBxGy({
+            usePerOrderLimit: discount.usesPerOrder.amount,
+            basicDetail: {
+              combinesWith: {
+                orderDiscounts: discount.combinations.order,
+                productDiscounts: discount.combinations.product,
+                shippingDiscounts: discount.combinations.shipping,
+              },
+              appliesOncePerCustomer: discount.maxUses.usePerCustomer.choose,
+              code: discount.title,
+              title: discount.title,
+              usageLimit: null,
+              startsAt: formattedStartDate,
+              endsAt: discount.endDate.date,
+              usePerOrderLimit: discount.usesPerOrder.amount,
+            },
+            discountCustomerBuys: {
+              item: {
+                products: {
+                  productsToAdd: discountCustomerBuys,
+                  productsToRemove: [],
+                  productVariantsToRemove: [],
+                  productVariantsToAdd: [],
+                },
+                all: false,
+                collections: null,
+              },
+              value: {
+                quantity: null,
+                amount: discount.minimumRequirement.amount,
               },
             },
             discountCustomerGets: {

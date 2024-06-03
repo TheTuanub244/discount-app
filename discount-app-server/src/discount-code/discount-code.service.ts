@@ -19,6 +19,8 @@ import {
 } from './graphql/codeDiscount';
 import { CombinesWith } from '../schemas/CombinesWith.schema';
 import { DiscountCustomerGets } from 'src/schemas/DiscountCustomerGets.schema';
+import { DiscountCustomerBuys } from 'src/schemas/DiscountCustomerBuys.schema';
+import { log } from '@shopify/shopify-api/lib/logger/log';
 
 @Injectable()
 export class DiscountCodeService {
@@ -98,11 +100,272 @@ export class DiscountCodeService {
           discountCustomerBuys: savedDiscountCustomerBuys._id,
           discountCustomerGets: savedDiscountCustomerGets._id,
         });
-
+        const savedDiscountCodeBxGy = await newDiscountCodeBxGy.save();
         if (discountCustomerGets.value.discountOnQuantity) {
           if (
             discountCustomerGets.value.discountOnQuantity.effect.discountAmount
           ) {
+            if (discountCustomerBuys.value.amount) {
+              const data = await client.request(CREATEDISCOUNTCODEBUYXGETY, {
+                variables: {
+                  bxgyCodeDiscount: {
+                    code: 'SUMMERSALE',
+                    customerBuys: {
+                      items: {
+                        products: {
+                          productsToAdd: [
+                            'gid://shopify/Product/9361345511697',
+                          ],
+                        },
+                      },
+                      value: {
+                        quantity: '3',
+                      },
+                    },
+                    customerGets: {
+                      items: {
+                        products: {
+                          productsToAdd: [
+                            'gid://shopify/Product/9361345511697',
+                          ],
+                        },
+                      },
+                      value: {
+                        discountOnQuantity: {
+                          effect: {
+                            percentage: 0.2,
+                          },
+                          quantity: '2',
+                        },
+                      },
+                    },
+                    customerSelection: {
+                      all: true,
+                    },
+                    endsAt: '2022-09-21T00:00:00Z',
+                    startsAt: '2022-06-21T00:00:00Z',
+                    title:
+                      '20% off up to two snowboards that are on sale for every three featured snowboards you buy.',
+                    usesPerOrderLimit: 3,
+                  },
+                },
+              });
+
+              await this.basicDetailModel.findByIdAndUpdate(
+                { _id: savedBasicDetail._id },
+                {
+                  $set: {
+                    summary:
+                      data.data.discountCodeBxgyCreate.codeDiscountNode
+                        .codeDiscount.summary,
+                    id: data.data.discountCodeBxgyCreate.codeDiscountNode.id,
+                  },
+                },
+                { new: true },
+              );
+              return data;
+            } else if (discountCustomerBuys.value.quantity) {
+              const data = await client.request(CREATEDISCOUNTCODEBUYXGETY, {
+                variables: {
+                  bxgyCodeDiscount: {
+                    combinesWith: {
+                      orderDiscounts:
+                        savedBasicDetail.combinesWith.orderDiscounts,
+                      productDiscounts:
+                        savedBasicDetail.combinesWith.productDiscounts,
+                      shippingDiscounts:
+                        savedBasicDetail.combinesWith.shippingDiscounts,
+                    },
+                    customerBuys: {
+                      items: {
+                        products: {
+                          productsToAdd:
+                            savedDiscountCustomerBuys.item.products
+                              .productsToAdd,
+                        },
+                      },
+                      value: {
+                        quantity:
+                          discountCustomerBuys.value.quantity.toString(),
+                      },
+                    },
+                    customerGets: {
+                      items: {
+                        products: {
+                          productsToAdd:
+                            savedDiscountCustomerGets.item.productsToAdd,
+                        },
+                      },
+                      value: {
+                        discountOnQuantity: {
+                          quantity:
+                            savedDiscountCustomerGets.value.discountOnQuantity.quantity.toString(),
+
+                          effect: {
+                            amount:
+                              savedDiscountCustomerGets.value.discountOnQuantity
+                                .effect.discountAmount.amount,
+                          },
+                        },
+                      },
+                    },
+                    endsAt: savedBasicDetail.endsAt,
+                    startsAt: savedBasicDetail.startsAt,
+                    title: savedBasicDetail.title,
+                    usesPerOrderLimit: savedBasicDetail.usePerOrderLimit,
+                  },
+                },
+              });
+              await this.basicDetailModel.findByIdAndUpdate(
+                { _id: savedBasicDetail._id },
+                {
+                  $set: {
+                    summary:
+                      data.data.discountCodeBxgyCreate.codeDiscountNode
+                        .codeDiscount.summary,
+                    id: data.data.discountCodeBxgyCreate.codeDiscountNode.id,
+                  },
+                },
+                { new: true },
+              );
+              return data;
+            }
+          }
+          if (discountCustomerGets.value.discountOnQuantity.effect.percentage) {
+            const percentage = Number(
+              savedDiscountCustomerGets.value.discountOnQuantity.effect
+                .percentage,
+            );
+            if (discountCustomerBuys.value.quantity) {
+              const Number: number = savedBasicDetail.usePerOrderLimit;
+              const data = await client.request(CREATEDISCOUNTCODEBUYXGETY, {
+                variables: {
+                  bxgyCodeDiscount: {
+                    usesPerOrderLimit: Number,
+                    startsAt: savedBasicDetail.startsAt,
+                    code: savedBasicDetail.code,
+                    title: savedBasicDetail.title,
+                    combinesWith: {
+                      orderDiscounts:
+                        savedBasicDetail.combinesWith.orderDiscounts,
+                      shippingDiscounts:
+                        savedBasicDetail.combinesWith.shippingDiscounts,
+                      productDiscounts:
+                        savedBasicDetail.combinesWith.productDiscounts,
+                    },
+                    customerSelection: {
+                      all: true,
+                    },
+                    customerGets: {
+                      value: {
+                        discountOnQuantity: {
+                          quantity: '2',
+                          effect: {
+                            percentage: 0.2,
+                          },
+                        },
+                      },
+                      items: {
+                        products: {
+                          productsToAdd:
+                            savedDiscountCustomerGets.item.productsToAdd,
+                        },
+                      },
+                    },
+                    customerBuys: {
+                      value: {
+                        quantity: '2',
+                      },
+                      items: {
+                        products: {
+                          productsToAdd:
+                            savedDiscountCustomerBuys.item.products
+                              .productsToAdd,
+                        },
+                      },
+                    },
+                  },
+                },
+              });
+              console.log(data.data.discountCodeBxgyCreate);
+
+              await this.basicDetailModel.findByIdAndUpdate(
+                { _id: savedBasicDetail._id },
+                {
+                  $set: {
+                    summary:
+                      data.data.discountCodeBxgyCreate.codeDiscountNode
+                        .codeDiscount.summary,
+                    id: data.data.discountCodeBxgyCreate.codeDiscountNode.id,
+                  },
+                },
+                { new: true },
+              );
+              return data;
+            } else if (discountCustomerBuys.value.amount) {
+              const data = await client.request(CREATEDISCOUNTCODEBUYXGETY, {
+                variables: {
+                  bxgyCodeDiscount: {
+                    code: savedBasicDetail.code,
+                    customerBuys: {
+                      items: {
+                        products: {
+                          productsToAdd:
+                            savedDiscountCustomerBuys.item.products
+                              .productsToAdd,
+                        },
+                      },
+                      value: {
+                        amount: savedDiscountCustomerBuys.value.amount,
+                      },
+                    },
+                    customerGets: {
+                      items: {
+                        products: {
+                          productsToAdd:
+                            savedDiscountCustomerGets.item.productsToAdd,
+                        },
+                      },
+                      value: {
+                        discountOnQuantity: {
+                          effect: {
+                            percentage:
+                              savedDiscountCustomerGets.value.discountOnQuantity
+                                .effect.percentage,
+                          },
+                          quantity:
+                            savedDiscountCustomerGets.value.discountOnQuantity.quantity.toString(),
+                        },
+                      },
+                    },
+                    customerSelection: {
+                      all: true,
+                    },
+                    startsAt: savedBasicDetail.startsAt,
+                    title: savedBasicDetail.title,
+                    usesPerOrderLimit: savedBasicDetail.usePerOrderLimit,
+                  },
+                },
+              });
+
+              await this.basicDetailModel.findByIdAndUpdate(
+                { _id: savedBasicDetail._id },
+                {
+                  $set: {
+                    summary:
+                      data.data.discountCodeBxgyCreate.codeDiscountNode
+                        .codeDiscount.summary,
+                    id: data.data.discountCodeBxgyCreate.codeDiscountNode.id,
+                  },
+                },
+                { new: true },
+              );
+              return data;
+            }
+          }
+        }
+        if (discountCustomerGets.value.discountAmount) {
+          if (discountCustomerBuys.value.amount) {
             const data = await client.request(CREATEDISCOUNTCODEBUYXGETY, {
               variables: {
                 bxgyCodeDiscount: {
@@ -116,33 +379,36 @@ export class DiscountCodeService {
                   },
                   customerBuys: {
                     items: {
-                      products: savedDiscountCustomerBuys.item.products,
+                      products: {
+                        productsToAdd:
+                          savedDiscountCustomerBuys.item.products.productsToAdd,
+                      },
                     },
                     value: {
-                      amount: discountCustomerBuys.value.amount.toString(),
-                      quantity: discountCustomerBuys.value.amount.toString(),
+                      amount: discountCustomerBuys.value.amount,
                     },
                   },
                   customerGets: {
-                    items: {
-                      products: savedDiscountCustomerGets.item.products,
-                    },
                     value: {
-                      discountOnQuantity: {
-                        effect: {
-                          amount:
-                            discountCustomerGets.value.discountOnQuantity.effect.discountAmount.amount.toString(),
-                        },
-                        quantity:
-                          discountCustomerGets.value.discountOnQuantity.quantity.toString(),
+                      discountAmount: {
+                        amount:
+                          savedDiscountCustomerGets.value.discountAmount.amount,
+                        appliesOnEachItem:
+                          savedDiscountCustomerGets.value.discountAmount
+                            .appliesOnEachItem,
+                      },
+                    },
+                    items: {
+                      products: {
+                        productsToAdd:
+                          savedDiscountCustomerGets.item.productsToAdd,
                       },
                     },
                   },
                   endsAt: savedBasicDetail.endsAt,
                   startsAt: savedBasicDetail.startsAt,
                   title: savedBasicDetail.title,
-                  usesPerOrderLimit:
-                    discountCodeBxGy.usePerOrderLimit.toString(),
+                  usesPerOrderLimit: discountCodeBxGy.usePerOrderLimit,
                 },
               },
             });
@@ -152,68 +418,70 @@ export class DiscountCodeService {
                 $set: {
                   summary:
                     data.data.discountCodeBxgyCreate.codeDiscountNode
-                      .automaticDiscount.summary,
+                      .codeDiscount.summary,
                   id: data.data.discountCodeBxgyCreate.codeDiscountNode.id,
                 },
               },
               { new: true },
             );
             return data;
-          }
-          if (discountCustomerGets.value.discountOnQuantity.effect.percentage) {
-            const percentage = Number(
-              savedDiscountCustomerGets.value.discountOnQuantity.effect
-                .percentage,
-            );
+          } else if (discountCustomerBuys.value.quantity) {
             const data = await client.request(CREATEDISCOUNTCODEBUYXGETY, {
               variables: {
-                automaticBxgyDiscount: {
-                  usesPerOrderLimit:
-                    discountCodeBxGy.usePerOrderLimit.toString(),
-                  startsAt: savedBasicDetail.startsAt,
-                  title: savedBasicDetail.title,
+                bxgyCodeDiscount: {
                   combinesWith: {
                     orderDiscounts:
                       savedBasicDetail.combinesWith.orderDiscounts,
-                    shippingDiscounts:
-                      savedBasicDetail.combinesWith.shippingDiscounts,
                     productDiscounts:
                       savedBasicDetail.combinesWith.productDiscounts,
+                    shippingDiscounts:
+                      savedBasicDetail.combinesWith.shippingDiscounts,
                   },
-                  customerGets: {
-                    value: {
-                      discountOnQuantity: {
-                        quantity:
-                          savedDiscountCustomerGets.value.discountOnQuantity.quantity.toString(),
-                        effect: {
-                          percentage: percentage,
+                  customerBuys: {
+                    items: {
+                      items: {
+                        products: {
+                          productsToAdd:
+                            savedDiscountCustomerBuys.item.products
+                              .productsToAdd,
                         },
                       },
                     },
-                    items: {
-                      products: savedDiscountCustomerGets.item.products,
-                    },
-                  },
-                  customerBuys: {
                     value: {
-                      quantity:
-                        savedDiscountCustomerBuys.value.quantity.toString(),
-                    },
-                    items: {
-                      products: savedDiscountCustomerBuys.item.products,
+                      quantity: discountCustomerBuys.value.quantity.toString(),
                     },
                   },
+                  customerGets: {
+                    value: {
+                      discountAmount: {
+                        amount:
+                          savedDiscountCustomerGets.value.discountAmount.amount,
+                        appliesOnEachItem:
+                          savedDiscountCustomerGets.value.discountAmount
+                            .appliesOnEachItem,
+                      },
+                    },
+                    items: {
+                      products: {
+                        productsToAdd:
+                          savedDiscountCustomerGets.item.productsToAdd,
+                      },
+                    },
+                  },
+                  endsAt: savedBasicDetail.endsAt,
+                  startsAt: savedBasicDetail.startsAt,
+                  title: savedBasicDetail.title,
+                  usesPerOrderLimit: discountCodeBxGy.usePerOrderLimit,
                 },
               },
             });
-
             await this.basicDetailModel.findByIdAndUpdate(
               { _id: savedBasicDetail._id },
               {
                 $set: {
                   summary:
                     data.data.discountCodeBxgyCreate.codeDiscountNode
-                      .automaticDiscount.summary,
+                      .codeDiscount.summary,
                   id: data.data.discountCodeBxgyCreate.codeDiscountNode.id,
                 },
               },
@@ -222,107 +490,121 @@ export class DiscountCodeService {
             return data;
           }
         }
-        if (discountCustomerGets.value.discountAmount) {
-          const data = await client.request(CREATEDISCOUNTCODEBUYXGETY, {
-            variables: {
-              automaticBxgyDiscount: {
-                usesPerOrderLimit: savedBasicDetail.usePerOrderLimit,
-                startsAt: savedBasicDetail.startsAt,
-                title: savedBasicDetail.title,
-                combinesWith: {
-                  orderDiscounts: savedBasicDetail.combinesWith.orderDiscounts,
-                  shippingDiscounts:
-                    savedBasicDetail.combinesWith.shippingDiscounts,
-                  productDiscounts:
-                    savedBasicDetail.combinesWith.productDiscounts,
-                },
-                customerGets: {
-                  value: {
-                    discountAmount: {
-                      amount:
-                        savedDiscountCustomerGets.value.discountAmount.amount,
-                      appliesOnEachItem:
-                        savedDiscountCustomerGets.value.discountAmount
-                          .appliesOnEachItem,
+        if (discountCustomerGets.value.percentage) {
+          if (discountCustomerBuys.value.amount) {
+            const data = await client.request(CREATEDISCOUNTCODEBUYXGETY, {
+              variables: {
+                bxgyCodeDiscount: {
+                  combinesWith: {
+                    orderDiscounts:
+                      savedBasicDetail.combinesWith.orderDiscounts,
+                    productDiscounts:
+                      savedBasicDetail.combinesWith.productDiscounts,
+                    shippingDiscounts:
+                      savedBasicDetail.combinesWith.shippingDiscounts,
+                  },
+                  customerBuys: {
+                    items: {
+                      items: {
+                        products: {
+                          productsToAdd:
+                            savedDiscountCustomerBuys.item.products
+                              .productsToAdd,
+                        },
+                      },
+                    },
+                    value: {
+                      amount: discountCustomerBuys.value.amount,
                     },
                   },
-                  items: {
-                    products: savedDiscountCustomerGets.item.products,
+                  customerGets: {
+                    value: {
+                      percentage: savedDiscountCustomerGets.value.percentage,
+                    },
+                    items: {
+                      items: {
+                        products: {
+                          productsToAdd:
+                            savedDiscountCustomerGets.item.productsToAdd,
+                        },
+                      },
+                    },
                   },
-                },
-                customerBuys: {
-                  value: {
-                    quantity:
-                      savedDiscountCustomerBuys.value.quantity.toString(),
-                  },
-                  items: {
-                    products: savedDiscountCustomerBuys.item.products,
-                  },
-                },
-              },
-            },
-          });
-          await this.basicDetailModel.findByIdAndUpdate(
-            { _id: savedBasicDetail._id },
-            {
-              $set: {
-                summary:
-                  data.data.discountCodeBxgyCreate.codeDiscountNode
-                    .automaticDiscount.summary,
-                id: data.data.discountCodeBxgyCreate.codeDiscountNode.id,
-              },
-            },
-            { new: true },
-          );
-          return data;
-        }
-        if (discountCustomerGets.value.percentage) {
-          const data = await client.request(CREATEDISCOUNTCODEBUYXGETY, {
-            variables: {
-              automaticBxgyDiscount: {
-                usesPerOrderLimit: savedBasicDetail.usePerOrderLimit,
-                startsAt: savedBasicDetail.startsAt,
-                title: savedBasicDetail.title,
-                combinesWith: {
-                  orderDiscounts: savedBasicDetail.combinesWith.orderDiscounts,
-                  shippingDiscounts:
-                    savedBasicDetail.combinesWith.shippingDiscounts,
-                  productDiscounts:
-                    savedBasicDetail.combinesWith.productDiscounts,
-                },
-                customerGets: {
-                  value: {
-                    percentage: savedDiscountCustomerGets.value.percentage,
-                  },
-                  items: {
-                    products: savedDiscountCustomerGets.item.products,
-                  },
-                },
-                customerBuys: {
-                  value: {
-                    quantity:
-                      savedDiscountCustomerBuys.value.quantity.toString(),
-                  },
-                  items: {
-                    products: savedDiscountCustomerBuys.item.products,
-                  },
+                  endsAt: savedBasicDetail.endsAt,
+                  startsAt: savedBasicDetail.startsAt,
+                  title: savedBasicDetail.title,
+                  usesPerOrderLimit: discountCodeBxGy.usePerOrderLimit,
                 },
               },
-            },
-          });
-          await this.basicDetailModel.findByIdAndUpdate(
-            { _id: savedBasicDetail._id },
-            {
-              $set: {
-                summary:
-                  data.data.discountCodeBxgyCreate.codeDiscountNode
-                    .automaticDiscount.summary,
-                id: data.data.discountCodeBxgyCreate.codeDiscountNode.id,
+            });
+            await this.basicDetailModel.findByIdAndUpdate(
+              { _id: savedBasicDetail._id },
+              {
+                $set: {
+                  summary:
+                    data.data.discountCodeBxgyCreate.codeDiscountNode
+                      .codeDiscount.summary,
+                  id: data.data.discountCodeBxgyCreate.codeDiscountNode.id,
+                },
               },
-            },
-            { new: true },
-          );
-          return data;
+              { new: true },
+            );
+            return data;
+          } else if (discountCustomerBuys.value.quantity) {
+            const data = await client.request(CREATEDISCOUNTCODEBUYXGETY, {
+              variables: {
+                bxgyCodeDiscount: {
+                  combinesWith: {
+                    orderDiscounts:
+                      savedBasicDetail.combinesWith.orderDiscounts,
+                    productDiscounts:
+                      savedBasicDetail.combinesWith.productDiscounts,
+                    shippingDiscounts:
+                      savedBasicDetail.combinesWith.shippingDiscounts,
+                  },
+                  customerBuys: {
+                    items: {
+                      products: {
+                        productsToAdd:
+                          savedDiscountCustomerBuys.item.products.productsToAdd,
+                      },
+                    },
+                    value: {
+                      quantity: discountCustomerBuys.value.quantity.toString(),
+                    },
+                  },
+                  customerGets: {
+                    value: {
+                      percentage: savedDiscountCustomerGets.value.percentage,
+                    },
+                    items: {
+                      products: {
+                        productsToAdd:
+                          savedDiscountCustomerGets.item.productsToAdd,
+                      },
+                    },
+                  },
+                  endsAt: savedBasicDetail.endsAt,
+                  startsAt: savedBasicDetail.startsAt,
+                  title: savedBasicDetail.title,
+                  usesPerOrderLimit: discountCodeBxGy.usePerOrderLimit,
+                },
+              },
+            });
+            await this.basicDetailModel.findByIdAndUpdate(
+              { _id: savedBasicDetail._id },
+              {
+                $set: {
+                  summary:
+                    data.data.discountCodeBxgyCreate.codeDiscountNode
+                      .codeDiscount.summary,
+                  id: data.data.discountCodeBxgyCreate.codeDiscountNode.id,
+                },
+              },
+              { new: true },
+            );
+            return data;
+          }
         }
       } catch (e) {
         return e;
@@ -412,8 +694,6 @@ export class DiscountCodeService {
           );
           return data;
         } else {
-          console.log(savedDiscountCustomerGets);
-
           const data = await client.request(createDiscountCodeBasic, {
             variables: {
               basicCodeDiscount: {
