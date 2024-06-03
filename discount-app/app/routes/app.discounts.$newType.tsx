@@ -166,7 +166,9 @@ export default function CreatePage() {
       case "id":
         return { ...state, id: action.payload };
       case "discountValue":
-        if (action.subtype == "fixedAmount") {
+        console.log(action);
+
+        if (action.subType == "fixedAmount") {
           if (action.payload) {
             return {
               ...state,
@@ -1266,6 +1268,8 @@ export default function CreatePage() {
     // });
   };
   const renderDiscountValue = useMemo(() => {
+    console.log(state);
+
     return (
       <div className="p-4 bg-white rounded-3xl mt-10 ml-40 w-full h-100 flex flex-col">
         <span className="font-bold text-xl">Discount Value</span>
@@ -1275,9 +1279,17 @@ export default function CreatePage() {
             defaultSelectedKeys={"1"}
             onChange={(e) => {
               if (e.target.value == "1") {
-                dispatch({ type: "discountValue", subType: "fixedAmount" });
+                dispatch({
+                  type: "discountValue",
+                  subType: "fixedAmount",
+                  payload: null,
+                });
               } else {
-                dispatch({ type: "discountValue", subType: "percentage" });
+                dispatch({
+                  type: "discountValue",
+                  subType: "percentage",
+                  payload: null,
+                });
               }
             }}
           >

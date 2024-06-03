@@ -3,7 +3,7 @@
 client_id = "9976e9765085ed7ecb4561fd266a92aa"
 name = "discount-app"
 handle = "discount-app-658"
-application_url = "https://wood-guarantees-marc-airport.trycloudflare.com"
+application_url = "https://expiration-balance-rays-ourselves.trycloudflare.com"
 embedded = true
 
 [build]
@@ -17,9 +17,9 @@ scopes = "read_product_listings,read_products,write_discounts,write_products"
 
 [auth]
 redirect_urls = [
-  "https://wood-guarantees-marc-airport.trycloudflare.com/auth/callback",
-  "https://wood-guarantees-marc-airport.trycloudflare.com/auth/shopify/callback",
-  "https://wood-guarantees-marc-airport.trycloudflare.com/api/auth/callback"
+  "https://expiration-balance-rays-ourselves.trycloudflare.com/auth/callback",
+  "https://expiration-balance-rays-ourselves.trycloudflare.com/auth/shopify/callback",
+  "https://expiration-balance-rays-ourselves.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]

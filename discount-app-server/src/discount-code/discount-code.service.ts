@@ -18,6 +18,7 @@ import {
   createDiscountCodeFreeShipping,
 } from './graphql/codeDiscount';
 import { CombinesWith } from '../schemas/CombinesWith.schema';
+import { DiscountCustomerGets } from 'src/schemas/DiscountCustomerGets.schema';
 
 @Injectable()
 export class DiscountCodeService {
@@ -364,8 +365,9 @@ export class DiscountCodeService {
           basicDetail: savedBasicDetail._id,
           discountCustomerGets: savedDiscountCustomerGets._id,
         });
+
         const savedDiscount = await newDiscount.save();
-        console.log(savedDiscountCustomerGets.value.percentage);
+
         if (discountCustomerGets.value.percentage) {
           const data = await client.request(createDiscountCodeBasic, {
             variables: {
@@ -374,7 +376,7 @@ export class DiscountCodeService {
                 title: savedBasicDetail.title,
                 customerGets: {
                   value: {
-                    percentage: 0.2,
+                    percentage: savedDiscountCustomerGets.value.percentage,
                   },
                   items: {
                     all: true,
@@ -384,11 +386,13 @@ export class DiscountCodeService {
                   all: true,
                 },
                 combinesWith: {
-                  orderDiscounts: basicDetail.combinesWith.orderDiscounts,
-                  productDiscounts: basicDetail.combinesWith.productDiscounts,
-                  shippingDiscount: basicDetail.combinesWith.shippingDiscounts,
+                  orderDiscounts: savedBasicDetail.combinesWith.orderDiscounts,
+                  shippingDiscounts:
+                    savedBasicDetail.combinesWith.shippingDiscounts,
+                  productDiscounts:
+                    savedBasicDetail.combinesWith.productDiscounts,
                 },
-                startsAt: basicDetail.startsAt,
+                startsAt: savedBasicDetail.startsAt,
                 endsAt: null,
               },
             },
@@ -408,6 +412,8 @@ export class DiscountCodeService {
           );
           return data;
         } else {
+          console.log(savedDiscountCustomerGets);
+
           const data = await client.request(createDiscountCodeBasic, {
             variables: {
               basicCodeDiscount: {
@@ -416,11 +422,10 @@ export class DiscountCodeService {
                 customerGets: {
                   value: {
                     discountAmount: {
-                      amount:
+                      amount: parseInt(
                         savedDiscountCustomerGets.value.discountAmount.amount,
-                      appliesOnEachItem:
-                        savedDiscountCustomerGets.value.discountAmount
-                          .appliesOnEachItem,
+                      ),
+                      appliesOnEachItem: false,
                     },
                   },
                   items: {
@@ -431,9 +436,11 @@ export class DiscountCodeService {
                   all: true,
                 },
                 combinesWith: {
-                  orderDiscounts: basicDetail.combinesWith.orderDiscounts,
-                  productDiscounts: basicDetail.combinesWith.productDiscounts,
-                  shippingDiscount: basicDetail.combinesWith.shippingDiscounts,
+                  orderDiscounts: savedBasicDetail.combinesWith.orderDiscounts,
+                  shippingDiscounts:
+                    savedBasicDetail.combinesWith.shippingDiscounts,
+                  productDiscounts:
+                    savedBasicDetail.combinesWith.productDiscounts,
                 },
                 startsAt: basicDetail.startsAt,
                 endsAt: null,
@@ -552,8 +559,6 @@ export class DiscountCodeService {
           );
           return data;
         } else {
-          console.log('123');
-
           const data = await client.request(createDiscountCodeFreeShipping, {
             variables: {
               freeShippingCodeDiscount: {
@@ -587,8 +592,6 @@ export class DiscountCodeService {
           });
 
           if (data) {
-            console.log(data);
-
             await this.basicDetailModel.findByIdAndUpdate(
               { _id: savedBasicDetail._id },
               {

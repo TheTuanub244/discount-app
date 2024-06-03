@@ -75,7 +75,16 @@ export default function CreateModal({ isOpen, onOpen, onOpenChange }) {
                       </div>
                     </ListboxItem>
                     <ListboxItem key="edit">
-                      <div className="flex justify-between">
+                      <div
+                        className="flex justify-between"
+                        onClick={() => {
+                          navigate("/app/discounts/newType=AmountOffOrder", {
+                            replace: true,
+                            relative: "path",
+                            state: { some: "state" },
+                          });
+                        }}
+                      >
                         <div className="flex flex-col">
                           <p className="text-bold text-small ">
                             Amount off order

@@ -537,7 +537,6 @@ export class DiscountBasicService {
       const discountOnQuantity = [];
       const productsToAdds = [];
       const saveDiscountItems = [];
-      console.log(value);
 
       const discountCustomerGetsWithItem =
         await this.discountCustomerGetsModel.aggregate([
@@ -568,6 +567,7 @@ export class DiscountBasicService {
       ) {
         const discountItems = await this.discountItemsModel.find();
         const discountValue = await this.createDiscountCustomerGetsValue(value);
+
         if (discountItems.length == 0) {
           const temp = await this.createDiscountProductsInput(item.products);
           const newDiscountItem = new this.discountItemsModel({
@@ -932,30 +932,42 @@ export class DiscountBasicService {
         await Promise.all(
           discountCustomerGetsWithValue.map(async (index) => {
             const discountValue_info = index.discountValue_info[0];
-            if (value.discountAmount) {
-              const discountamount = await this.discountAmountModel.findById(
-                discountValue_info.discountAmount,
-              );
 
-              if (
-                this.compareObject(
-                  {
+            if (value.discountAmount) {
+              if (discountValue_info.discountAmount == null) {
+                const newDiscountAmount = await this.createDiscountAmount({
+                  amount: value.discountAmount.amount,
+                  appliesOnEachItem: value.discountAmount.appliesOnEachItem,
+                });
+
+                discountAmount.push({
+                  _id: newDiscountAmount._id,
+                  amount: newDiscountAmount.amount,
+                  appliesOnEachItem: newDiscountAmount.appliesOnEachItem,
+                });
+              } else {
+                const discountamount = await this.discountAmountModel.findById(
+                  discountValue_info.discountAmount,
+                );
+
+                if (
+                  this.compareObject(
+                    {
+                      amount: discountamount.amount,
+                      appliesOnEachItem: discountamount.appliesOnEachItem,
+                    },
+                    value.discountAmount,
+                  )
+                ) {
+                  discountAmount.push({
+                    _id: discountamount._id,
                     amount: discountamount.amount,
                     appliesOnEachItem: discountamount.appliesOnEachItem,
-                  },
-                  value.discountAmount,
-                )
-              ) {
-                discountAmount.push({
-                  _id: discountamount._id,
-                  amount: discountamount.amount,
-                  appliesOnEachItem: discountamount.appliesOnEachItem,
-                });
-              }
-              if (discountValue_info.percentage == value.percentage) {
-                savedDiscountValue.push(index);
+                  });
+                }
               }
             }
+
             if (value.discountOnQuantity) {
               const findDiscountOnQuantity =
                 await this.createDiscountOnQuantity(value.discountOnQuantity);
@@ -1035,12 +1047,15 @@ export class DiscountBasicService {
             }
           }),
         );
+
         if (value.discountAmount) {
           if (
             discountAmount.length != 0 &&
             savedDiscountCustomerGets.length != 0 &&
             savedDiscountItem.length != 0
           ) {
+            console.log(discountAmount);
+
             return {
               _id: savedDiscountCustomerGets[0]._id,
               item: {
@@ -1055,28 +1070,55 @@ export class DiscountBasicService {
           } else {
             const newDiscountvalue =
               await this.createDiscountCustomerGetsValue(value);
-            const temp = await this.createDiscountProductsInput(item.products);
-            const newDiscountItem = new this.discountItemsModel({
-              products: temp._id,
-            });
+            if (item.products) {
+              const temp = await this.createDiscountProductsInput(
+                item.products,
+              );
 
-            const savedDiscountItem = await newDiscountItem.save();
-            const newDiscountCustomerGets = new this.discountCustomerGetsModel({
-              item: savedDiscountItem._id,
-              value: newDiscountvalue._id,
-              ...discountCustomerGetsDto,
-            });
-            return {
-              _id: newDiscountCustomerGets._id,
-              item: {
-                products: item.products,
-              },
-              value: value,
-              appliesOnSubscription:
-                discountCustomerGetsDto.appliesOnSubscription,
-              appliesOnOneTimePurchase:
-                discountCustomerGetsDto.appliesOnOneTimePurchase,
-            };
+              const newDiscountItem = new this.discountItemsModel({
+                products: temp._id,
+              });
+
+              const savedDiscountItem = await newDiscountItem.save();
+              console.log(savedDiscountItem);
+              const newDiscountCustomerGets =
+                new this.discountCustomerGetsModel({
+                  item: savedDiscountItem._id,
+                  value: newDiscountvalue._id,
+                  ...discountCustomerGetsDto,
+                });
+
+              return {
+                _id: newDiscountCustomerGets._id,
+                item: {
+                  products: item.products,
+                },
+                value: value,
+                appliesOnSubscription:
+                  discountCustomerGetsDto.appliesOnSubscription,
+                appliesOnOneTimePurchase:
+                  discountCustomerGetsDto.appliesOnOneTimePurchase,
+              };
+            } else {
+              const newDiscountCustomerGets =
+                new this.discountCustomerGetsModel({
+                  item: null,
+                  value: newDiscountvalue._id,
+                  ...discountCustomerGetsDto,
+                });
+
+              return {
+                _id: newDiscountCustomerGets._id,
+                item: {
+                  products: item.products,
+                },
+                value: value,
+                appliesOnSubscription:
+                  discountCustomerGetsDto.appliesOnSubscription,
+                appliesOnOneTimePurchase:
+                  discountCustomerGetsDto.appliesOnOneTimePurchase,
+              };
+            }
           }
         }
         if (value.discountOnQuantity) {
@@ -1375,8 +1417,7 @@ export class DiscountBasicService {
           discountAmount: savedDiscountCustomerGetsValues[0].discountAmount,
           discountOnQuantity:
             savedDiscountCustomerGetsValues[0].discountOnQuantity,
-          percentage:
-            parseInt(savedDiscountCustomerGetsValues[0].percentage) / 100,
+          percentage: savedDiscountCustomerGetsValues[0].percentage,
         };
       }
     }
@@ -1457,14 +1498,29 @@ export class DiscountBasicService {
         await Promise.all(
           discountCustomerGetsValueWithDiscountAmount.map(async (index) => {
             const discountAmount_info = index.discountAmount_info[0];
-            const { amount, appliesOnEachItem } = discountAmount_info as {
-              amount: number;
-              appliesOnEachItem: boolean;
-            };
-            if (
-              this.compareObject({ amount, appliesOnEachItem }, discountAmount)
-            ) {
-              savedAmount.push(discountAmount_info);
+            if (!discountAmount_info) {
+              const newDiscountAmount = await this.createDiscountAmount({
+                amount: discountAmount.amount,
+                appliesOnEachItem: discountAmount.appliesOnEachItem,
+              });
+              savedAmount.push({
+                _id: newDiscountAmount._id,
+                amount: newDiscountAmount.amount,
+                appliesOnEachItem: newDiscountAmount.appliesOnEachItem,
+              });
+            } else {
+              const { amount, appliesOnEachItem } = discountAmount_info as {
+                amount: number;
+                appliesOnEachItem: boolean;
+              };
+              if (
+                this.compareObject(
+                  { amount, appliesOnEachItem },
+                  discountAmount,
+                )
+              ) {
+                savedAmount.push(discountAmount_info);
+              }
             }
           }),
         );
