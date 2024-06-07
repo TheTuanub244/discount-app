@@ -3,7 +3,7 @@
 client_id = "9976e9765085ed7ecb4561fd266a92aa"
 name = "discount-app"
 handle = "discount-app-658"
-application_url = "https://myrtle-sony-basic-four.trycloudflare.com"
+application_url = "https://mile-record-oakland-chorus.trycloudflare.com"
 embedded = true
 
 [build]
@@ -17,9 +17,9 @@ scopes = "read_product_listings,read_products,write_discounts,write_products"
 
 [auth]
 redirect_urls = [
-  "https://myrtle-sony-basic-four.trycloudflare.com/auth/callback",
-  "https://myrtle-sony-basic-four.trycloudflare.com/auth/shopify/callback",
-  "https://myrtle-sony-basic-four.trycloudflare.com/api/auth/callback"
+  "https://mile-record-oakland-chorus.trycloudflare.com/auth/callback",
+  "https://mile-record-oakland-chorus.trycloudflare.com/auth/shopify/callback",
+  "https://mile-record-oakland-chorus.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]

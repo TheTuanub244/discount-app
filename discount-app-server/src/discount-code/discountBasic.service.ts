@@ -546,6 +546,8 @@ export class DiscountBasicService {
 
       discountItem.push(savedDiscountInput);
     }
+    console.log(value);
+
     if (value.percentage) {
       const newDiscountValue = await this.createDiscountCustomerGetsValue({
         percentage: value.percentage,
@@ -589,22 +591,41 @@ export class DiscountBasicService {
         discountValue.push(newDiscountValue);
       }
     }
-    const newDiscountCustomerGets = new this.discountCustomerGetsModel({
-      item: discountItem[0]._id,
-      value: discountValue[0]._id,
-      appliesOnOnetimePurchase:
-        discountCustomerGetsDto.appliesOnOneTimePurchase,
-      appliesOnSubscription: discountCustomerGetsDto.appliesOnSubscription,
-    });
-    const savedDiscountCustomerGets = await newDiscountCustomerGets.save();
-    return {
-      _id: savedDiscountCustomerGets._id,
-      item: discountItem[0],
-      value: discountValue[0],
-      appliesOnOnetimePurchase:
-        discountCustomerGetsDto.appliesOnOneTimePurchase,
-      appliesOnSubscription: discountCustomerGetsDto.appliesOnSubscription,
-    };
+    if (discountItem.length == 0) {
+      const newDiscountCustomerGets = new this.discountCustomerGetsModel({
+        item: null,
+        value: discountValue[0]._id,
+        appliesOnOnetimePurchase:
+          discountCustomerGetsDto.appliesOnOneTimePurchase,
+        appliesOnSubscription: discountCustomerGetsDto.appliesOnSubscription,
+      });
+      const savedDiscountCustomerGets = await newDiscountCustomerGets.save();
+      return {
+        _id: savedDiscountCustomerGets._id,
+        item: null,
+        value: discountValue[0],
+        appliesOnOnetimePurchase:
+          discountCustomerGetsDto.appliesOnOneTimePurchase,
+        appliesOnSubscription: discountCustomerGetsDto.appliesOnSubscription,
+      };
+    } else {
+      const newDiscountCustomerGets = new this.discountCustomerGetsModel({
+        item: discountItem[0]._id,
+        value: discountValue[0]._id,
+        appliesOnOnetimePurchase:
+          discountCustomerGetsDto.appliesOnOneTimePurchase,
+        appliesOnSubscription: discountCustomerGetsDto.appliesOnSubscription,
+      });
+      const savedDiscountCustomerGets = await newDiscountCustomerGets.save();
+      return {
+        _id: savedDiscountCustomerGets._id,
+        item: discountItem[0],
+        value: discountValue[0],
+        appliesOnOnetimePurchase:
+          discountCustomerGetsDto.appliesOnOneTimePurchase,
+        appliesOnSubscription: discountCustomerGetsDto.appliesOnSubscription,
+      };
+    }
   }
   async createDiscountOnQuantity({
     effect,
@@ -936,6 +957,7 @@ export class DiscountBasicService {
     ...discountMinimumRequirement
   }: DiscountMinimumRequirementDto) {
     const minimumRequirement = [];
+    console.log(discountMinimumRequirement);
     if (discountMinimumRequirement.quantity) {
       const minimumRequirements =
         await this.discountMinimumRequirementModel.find();

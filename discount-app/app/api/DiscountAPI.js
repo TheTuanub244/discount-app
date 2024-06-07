@@ -39,3 +39,10 @@ export const createDiscountBasic = async (discount) => {
   );
   return data.data;
 };
+export const createAmountOffProduct = async (discount) => {
+  const data = await axios.post(
+    "http://localhost:8000/discount/createAmountOffProduct",
+    discount,
+  );
+  return data.data;
+};

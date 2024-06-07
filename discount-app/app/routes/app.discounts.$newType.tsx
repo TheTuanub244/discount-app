@@ -23,6 +23,7 @@ import { useDateFormatter } from "@react-aria/i18n";
 import Calendar from "../Components/Calendar/Calendar";
 import DiscardModal from "~/Components/DiscardModal/DIscardModal";
 import {
+  createAmountOffProduct,
   createBuyXgetY,
   createDiscountBasic,
   createFreeShipping,
@@ -52,6 +53,12 @@ export async function loader({ params }: LoaderFunctionArgs) {
       method: "Order discount",
       products: data,
     };
+  } else if (formattedURL == "AmountOffProduct") {
+    return {
+      params: "Amount off product",
+      method: "Product discount",
+      products: data,
+    };
   }
 }
 export default function CreatePage() {
@@ -71,7 +78,7 @@ export default function CreatePage() {
   const [valueCustomerSpends, setValueCustomerSpends] = useState(new Set([]));
   const [productCustomerSpends, setProductCustomerSpends] = useState([]);
   const [productCustomerGets, setProductCustomerGets] = useState([]);
-
+  const [error, setError] = useState();
   const initialState = {
     title: "",
     id: "automatic",
@@ -146,6 +153,11 @@ export default function CreatePage() {
       product: false,
       order: false,
       shipping: false,
+    },
+    subscription: {
+      firstPay: false,
+      multiplePay: false,
+      amount: 0,
     },
     startDate: {
       date: now(getLocalTimeZone()),
@@ -502,6 +514,33 @@ export default function CreatePage() {
             },
           };
         }
+      case "subscription":
+        if (action.subtype == "firstPay") {
+          return {
+            ...state,
+            subscription: {
+              firstPay: true,
+              multiplePay: false,
+            },
+          };
+        } else if (action.subtype == "multiplePay") {
+          return {
+            ...state,
+            subscription: {
+              firstPay: false,
+              multiplePay: true,
+              amount: action.payload,
+            },
+          };
+        } else if (action.subtype == "all") {
+          return {
+            ...state,
+            subscription: {
+              firstPay: true,
+              multiplePay: true,
+            },
+          };
+        }
       case "combinations":
         const check = {
           product: false,
@@ -708,10 +747,23 @@ export default function CreatePage() {
           </h1>
           <Input
             variant="bordered"
+            color={error && "danger"}
             onChange={(e) => {
               dispatch({ type: "title", payload: e.target.value });
             }}
           />
+          {error && (
+            <p
+              style={{
+                color: "red",
+                marginLeft: 2,
+                marginTop: 5,
+              }}
+            >
+              {error}
+            </p>
+          )}
+
           <p
             style={{
               marginTop: 10,
@@ -1252,12 +1304,19 @@ export default function CreatePage() {
   const navigate = useNavigate();
 
   const handleSaveDiscount = async () => {
+    console.log(state);
+
     if (params == "Free shipping") {
       const data = await createFreeShipping(state);
+      if (data.EC == 1) {
+        setError(data.EM);
+      }
     } else if (params == "Buy X get Y") {
       const data = await createBuyXgetY(state);
     } else if (params == "Amount off order") {
       const data = await createDiscountBasic(state);
+    } else if (params == "Amount off product") {
+      const data = await createAmountOffProduct(state);
     }
 
     // navigate("/app", {
@@ -1266,6 +1325,100 @@ export default function CreatePage() {
     //   state: { some: "state" },
     // });
   };
+  const renderDiscountAmountDiscountValue = useMemo(() => {
+    return (
+      <>
+        <div className="p-4 bg-white rounded-3xl mt-10 ml-40 w-full h-100 flex flex-col">
+          <span className="font-bold text-xl">Discount Value</span>
+          <div className="flex gap-1 mt-2">
+            <Select
+              className="w-full"
+              defaultSelectedKeys={"1"}
+              onChange={(e) => {
+                if (e.target.value == "1") {
+                  dispatch({
+                    type: "discountValue",
+                    subType: "fixedAmount",
+                    payload: null,
+                  });
+                } else {
+                  dispatch({
+                    type: "discountValue",
+                    subType: "percentage",
+                    payload: null,
+                  });
+                }
+              }}
+            >
+              <SelectItem key="1" value={"Fixed amount"}>
+                Fixed amount
+              </SelectItem>
+            </Select>
+            <Input
+              variant="bordered"
+              className="w-1/4"
+              endContent={state.discountValue.percentage.choose ? "%" : "đ"}
+              onChange={(e) => {
+                if (state.discountValue.percentage.choose) {
+                  dispatch({
+                    type: "discountValue",
+                    subType: "percentage",
+                    payload: e.target.value,
+                  });
+                } else {
+                  dispatch({
+                    type: "discountValue",
+                    subType: "fixedAmount",
+                    payload: e.target.value,
+                  });
+                }
+              }}
+            />
+          </div>
+          <div className="flex gap-1 mt-2 justify-between mx-5">
+            <h1 className="text-lg font-semibold">Applies to</h1>
+            <h1 className="text-lg font-semibold">Purchase type</h1>
+          </div>
+          <div className="flex gap-1 mt-2">
+            <Select className="w-1/2" defaultSelectedKeys={"1"}>
+              <SelectItem key="1" value={"Fixed amount"}>
+                Fixed amount
+              </SelectItem>
+            </Select>
+            <Select className="w-full mt-2" defaultSelectedKeys={"1"}>
+              <SelectItem key="1" value={"oneTime"}>
+                One-time purchase
+              </SelectItem>
+              <SelectItem key="2" value={"subscription"}>
+                Subscription
+              </SelectItem>
+              <SelectItem key="3" value={"both"}>
+                Both
+              </SelectItem>
+            </Select>
+          </div>
+          <div
+            className="flex"
+            style={{
+              marginTop: 18,
+            }}
+          >
+            <Input variant="bordered" placeholder="Search products" />
+            <Button
+              color="danger"
+              className="ml-5"
+              onClick={() => {
+                onProductCustomerGetsModalOpen();
+              }}
+            >
+              Browse
+            </Button>
+          </div>
+          {renderSelectedProductCustomerGets}
+        </div>
+      </>
+    );
+  }, [state]);
   const renderDiscountValue = useMemo(() => {
     console.log(state);
 
@@ -1386,6 +1539,9 @@ export default function CreatePage() {
           {renderTitle}
         </div>
         {params == "Amount off order" && <>{renderDiscountValue}</>}
+        {params == "Amount off product" && (
+          <>{renderDiscountAmountDiscountValue}</>
+        )}
         {params == "Buy X get Y" && (
           <>
             <div className="p-4 bg-white rounded-3xl mt-10 ml-40 w-full h-100 flex flex-col">
@@ -1499,7 +1655,9 @@ export default function CreatePage() {
             </div>
           </>
         )}
-        {(params == "Free shipping" || params == "Amount off order") && (
+        {(params == "Free shipping" ||
+          params == "Amount off order" ||
+          params == "Amount off product") && (
           <>
             {params == "Free shipping" && (
               <div className="p-4 bg-white rounded-3xl mt-10 ml-40 w-full h-100 flex flex-col">
@@ -1649,6 +1807,60 @@ export default function CreatePage() {
               Limit to one use per customer
             </Checkbox>
           </CheckboxGroup>
+          {params == "Amount off product" && (
+            <>
+              <span className="font-semibold mt-2">
+                Recurring payments for subscriptions
+              </span>
+              <RadioGroup
+                style={{
+                  marginTop: 10,
+                  marginLeft: 10,
+                  fontWeight: 400,
+                }}
+                onValueChange={(value) => {
+                  if (value == "1") {
+                    dispatch({
+                      type: "subscription",
+                      subtype: "firstPay",
+                    });
+                  } else if (value == "2") {
+                    dispatch({
+                      type: "subscription",
+                      subtype: "multiplePay",
+                    });
+                  } else {
+                    dispatch({
+                      type: "subscription",
+                      subtype: "all",
+                    });
+                  }
+                }}
+              >
+                <Radio value="1">Limit discount to the first payment</Radio>
+                <Radio value="2">
+                  Limit discount to multiple recurring payments
+                </Radio>
+                {state.subscription.multiplePay &&
+                  !state.subscription.firstPay && (
+                    <Input
+                      className="w-1/4"
+                      variant="bordered"
+                      onChange={(e) =>
+                        dispatch({
+                          type: "subscription",
+                          subtype: "multiplePay",
+                          payload: e.target.value,
+                        })
+                      }
+                    />
+                  )}
+                <Radio value="3">
+                  Discount applies to all recurring payments
+                </Radio>
+              </RadioGroup>
+            </>
+          )}
         </div>
         <div
           className="p-4 bg-white rounded-3xl mt-10 ml-40 w-full h-100 flex flex-col"

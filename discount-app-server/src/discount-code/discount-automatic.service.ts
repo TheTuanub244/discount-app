@@ -19,6 +19,7 @@ import {
 } from './graphql/automaticDiscount';
 import { BasicDetail } from '../schemas/BasicDetails.schema';
 import { CombinesWith } from '../schemas/CombinesWith.schema';
+import { DiscountCustomerGets } from 'src/schemas/DiscountCustomerGets.schema';
 
 @Injectable()
 export class DiscountAutomaticService {
@@ -50,6 +51,7 @@ export class DiscountAutomaticService {
         await this.discountBasicService.createDiscountCustomerGets(
           discountCustomerGets,
         );
+
       const savedDiscountMinimumRequirement =
         await this.discountBasicService.createDiscountMinimumRequirement(
           discountMinimumRequirement,
@@ -99,18 +101,18 @@ export class DiscountAutomaticService {
                     discountAmount: {
                       amount:
                         savedDiscountCustomerGets.value.discountAmount.amount,
-                      appliesOnEachItem:
-                        savedDiscountCustomerGets.value.discountAmount
-                          .appliesOnEachItem,
+                      appliesOnEachItem: false,
                     },
                   },
                   items: {
-                    products: savedDiscountCustomerGets.item.products,
+                    all: true,
                   },
                 },
               },
             },
           });
+          console.log(data.data);
+
           await this.basicDetailModel.findByIdAndUpdate(
             { _id: savedBasicDetail._id },
             {
@@ -143,7 +145,7 @@ export class DiscountAutomaticService {
                 minimumRequirement: {
                   quantity: {
                     greaterThanOrEqualToQuantity:
-                      savedDiscountMinimumRequirement.quantity,
+                      savedDiscountMinimumRequirement.quantity.toString(),
                   },
                 },
                 customerGets: {
@@ -151,18 +153,18 @@ export class DiscountAutomaticService {
                     discountAmount: {
                       amount:
                         savedDiscountCustomerGets.value.discountAmount.amount,
-                      appliesOnEachItem:
-                        savedDiscountCustomerGets.value.discountAmount
-                          .appliesOnEachItem,
+                      appliesOnEachItem: false,
                     },
                   },
                   items: {
-                    products: savedDiscountCustomerGets.item.products,
+                    all: true,
                   },
                 },
               },
             },
           });
+          console.log(data.data.discountAutomaticBasicCreate.userErrors);
+
           await this.basicDetailModel.findByIdAndUpdate(
             { _id: savedBasicDetail._id },
             {
@@ -178,6 +180,7 @@ export class DiscountAutomaticService {
           );
           return data;
         }
+
         if (
           !savedDiscountMinimumRequirement.quantity &&
           !savedDiscountMinimumRequirement.subtotal
@@ -200,18 +203,17 @@ export class DiscountAutomaticService {
                     discountAmount: {
                       amount:
                         savedDiscountCustomerGets.value.discountAmount.amount,
-                      appliesOnEachItem:
-                        savedDiscountCustomerGets.value.discountAmount
-                          .appliesOnEachItem,
+                      appliesOnEachItem: false,
                     },
                   },
                   items: {
-                    products: savedDiscountCustomerGets.item.products,
+                    all: true,
                   },
                 },
               },
             },
           });
+
           await this.basicDetailModel.findByIdAndUpdate(
             { _id: savedBasicDetail._id },
             {
@@ -254,7 +256,7 @@ export class DiscountAutomaticService {
                     percentage: discountCustomerGets.value.percentage,
                   },
                   items: {
-                    products: savedDiscountCustomerGets.item.products,
+                    all: true,
                   },
                 },
               },
@@ -285,7 +287,7 @@ export class DiscountAutomaticService {
                 minimumRequirement: {
                   quantity: {
                     greaterThanOrEqualToQuantity:
-                      savedDiscountMinimumRequirement.quantity,
+                      savedDiscountMinimumRequirement.quantity.toString(),
                   },
                 },
                 combinesWith: {
@@ -300,7 +302,7 @@ export class DiscountAutomaticService {
                     percentage: discountCustomerGets.value.percentage,
                   },
                   items: {
-                    products: savedDiscountCustomerGets.item.products,
+                    all: true,
                   },
                 },
               },
@@ -886,6 +888,7 @@ export class DiscountAutomaticService {
     discountMinimumRequirement,
     destination,
     basicDetail,
+
     ...automaticDiscountFreeShippingDto
   }: AutomaticDiscountFreeShippingDto) {
     if (discountMinimumRequirement && destination) {
@@ -1462,6 +1465,34 @@ export class DiscountAutomaticService {
         if (value.type == 'Automatic') {
         }
       });
+    }
+  }
+  async createAmountOffProduct({
+    basicDetail,
+    discountMinimumRequirement,
+    discountCustomerGets,
+    ...discountAutomaticBasicDto
+  }: DiscountAutomaticBasic) {
+    if (discountMinimumRequirement.subtotal) {
+      if (discountCustomerGets.value.discountAmount) {
+        // const savedBasicDetail =
+        //   await this.discountBasicService.createBasicDetail(basicDetail);
+        const savedDiscountMinimumRequirement =
+          await this.discountBasicService.createDiscountMinimumRequirement(
+            discountMinimumRequirement,
+          );
+        const saveciscountCustomerGets =
+          await this.discountBasicService.createDiscountCustomerGets({
+            appliesOnOneTimePurchase:
+              discountCustomerGets.appliesOnOnetimePurchase,
+            appliesOnSubscription:
+              discountCustomerGets.appliesOnOnetimePurchase,
+            item: discountCustomerGets.item,
+            value: discountCustomerGets.value,
+          });
+        const data = await client.request(CREATEDISCOUNTAUTOMATICBASIC, {
+          variables: 
+        })
     }
   }
 }
