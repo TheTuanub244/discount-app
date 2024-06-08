@@ -86,3 +86,13 @@ export const ACTIVEDISCOUNTCODE = `mutation discountCodeActivate($id: ID!) {
     }
   }
 }`;
+export const DELETECODEDISCOUNTS = `mutation discountCodeDelete($id: ID!) {
+  discountCodeDelete(id: $id) {
+    deletedCodeDiscountId
+    userErrors {
+      field
+      code
+      message
+    }
+  }
+}`;

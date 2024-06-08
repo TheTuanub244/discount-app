@@ -23,6 +23,7 @@ import { capitalize } from "./utils";
 import {
   activeAllDiscount,
   deactiveAllDiscount,
+  deleteDiscounts,
   getAllDiscount,
 } from "../../../api/DiscountAPI";
 import { VerticalDotsIcon } from "./VerticalDotsIcon";
@@ -216,7 +217,9 @@ export default function App({ onOpen }) {
                     Deactive Discount
                   </DropdownItem>
                   <DropdownItem>View</DropdownItem>
-                  <DropdownItem>Delete</DropdownItem>
+                  <DropdownItem onClick={() => deleteDiscount(discount)}>
+                    Delete
+                  </DropdownItem>
                 </DropdownMenu>
               </Dropdown>
             </div>
@@ -359,7 +362,9 @@ export default function App({ onOpen }) {
     onSearchChange,
     hasSearchFilter,
   ]);
-
+  const deleteDiscount = async (discounts) => {
+    const data = await deleteDiscounts(discounts);
+  };
   const bottomContent = React.useMemo(() => {
     return (
       <div className="py-2 px-2 flex justify-between items-center">
@@ -425,7 +430,9 @@ export default function App({ onOpen }) {
                 <DropdownItem onClick={() => deactiveAllDiscounts(discounts)}>
                   Deactive Discounts
                 </DropdownItem>
-                <DropdownItem>Delete</DropdownItem>
+                <DropdownItem onClick={() => deleteDiscount(discounts)}>
+                  Delete
+                </DropdownItem>
               </DropdownMenu>
             </Dropdown>
           </div>

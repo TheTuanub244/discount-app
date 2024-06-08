@@ -1036,5 +1036,11 @@ export class DiscountBasicService {
       }
     }
   }
-  async getAllDiscount(automatics, codes) {}
+  async deleteBasicDetail(basicDetail: any) {
+    const findBasicDetail = await this.basicDetailModel.findByIdAndDelete(
+      { _id: basicDetail._id },
+      { new: true },
+    );
+    return findBasicDetail;
+  }
 }

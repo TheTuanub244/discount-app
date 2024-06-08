@@ -14,6 +14,7 @@ import { DiscountCodeFreeShippingDto } from './dto/level-2/create-discountCodeFr
 import { client } from '../main';
 import {
   CREATEDISCOUNTCODEBUYXGETY,
+  DELETECODEDISCOUNTS,
   createDiscountCodeBasic,
   createDiscountCodeFreeShipping,
 } from './graphql/codeDiscount';
@@ -1230,6 +1231,24 @@ export class DiscountCodeService {
         );
         return data;
       }
+    }
+  }
+  async deleteDiscounts(discounts: any) {
+    if (!Array.isArray(discounts)) {
+      const findDiscount = await this.discountBasicService.deleteBasicDetail(
+        discounts.basicDetail,
+      );
+      const deleteDiscount =
+        await this.discountCodeBasicModel.findByIdAndDelete(
+          { _id: discounts._id },
+          { new: true },
+        );
+      const data = await client.request(DELETECODEDISCOUNTS, {
+        variables: {
+          id: discounts.id,
+        },
+      });
+      return data.data;
     }
   }
 }

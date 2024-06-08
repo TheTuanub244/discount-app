@@ -2304,4 +2304,12 @@ export class DiscountController {
       }
     }
   }
+  @Post('/deleteDiscounts')
+  async handleDeleteDiscounts(@Body() discounts: any) {
+    if (discounts.id == 'automatic') {
+      return this.discountAutomaticService.deleteDiscounts(discounts);
+    } else {
+      return this.discountCodeService.deleteDiscounts(discounts);
+    }
+  }
 }

@@ -1353,6 +1353,9 @@ export default function CreatePage() {
               <SelectItem key="1" value={"Fixed amount"}>
                 Fixed amount
               </SelectItem>
+              <SelectItem key="2" value={"percentage "}>
+                Percentage
+              </SelectItem>
             </Select>
             <Input
               variant="bordered"
@@ -1382,7 +1385,7 @@ export default function CreatePage() {
           <div className="flex gap-1 mt-2">
             <Select className="w-1/2" defaultSelectedKeys={"1"}>
               <SelectItem key="1" value={"Fixed amount"}>
-                Fixed amount
+                Specific products
               </SelectItem>
             </Select>
             <Select className="w-full mt-2" defaultSelectedKeys={"1"}>

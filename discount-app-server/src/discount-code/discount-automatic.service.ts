@@ -15,6 +15,7 @@ import {
   CREATEDISCOUNTAUTOMATICBASIC,
   CREATEDISCOUNTAUTOMATICBXGY,
   DEACTIVEAUTOMATICDISCOUNTS,
+  DELETEDISCOUNTS,
   createDiscountAutomaticFreeShipping,
 } from './graphql/automaticDiscount';
 import { BasicDetail } from '../schemas/BasicDetails.schema';
@@ -1520,8 +1521,7 @@ export class DiscountAutomaticService {
         const data = await client.request(CREATEDISCOUNTAUTOMATICBASIC, {
           variables: {
             automaticBasicDiscount: {
-              recurringCycleLimit:
-                discountAutomaticBasicDto.recurringCycleLimit,
+              recurringCycleLimit: 1,
               startsAt: savedBasicDetail.startsAt,
               title: savedBasicDetail.title,
               combinesWith: {
@@ -1554,10 +1554,6 @@ export class DiscountAutomaticService {
             },
           },
         });
-        console.log(
-          data.data.discountAutomaticBasicCreate.automaticDiscountNode,
-        );
-
         await this.basicDetailModel.findByIdAndUpdate(
           { _id: savedBasicDetail._id },
           {
@@ -1576,8 +1572,7 @@ export class DiscountAutomaticService {
         const data = await client.request(CREATEDISCOUNTAUTOMATICBASIC, {
           variables: {
             automaticBasicDiscount: {
-              recurringCycleLimit:
-                discountAutomaticBasicDto.recurringCycleLimit,
+              recurringCycleLimit: 1,
               startsAt: savedBasicDetail.startsAt,
               title: savedBasicDetail.title,
               combinesWith: {
@@ -1595,9 +1590,7 @@ export class DiscountAutomaticService {
               },
               customerGets: {
                 value: {
-                  percentage:
-                    parseFloat(savedDiscountCustomerGets.value.percentage) /
-                    100,
+                  percentage: savedDiscountCustomerGets.value.percentage,
                 },
                 items: {
                   products: {
@@ -1628,8 +1621,7 @@ export class DiscountAutomaticService {
         const data = await client.request(CREATEDISCOUNTAUTOMATICBASIC, {
           variables: {
             automaticBasicDiscount: {
-              recurringCycleLimit:
-                discountAutomaticBasicDto.recurringCycleLimit,
+              recurringCycleLimit: 1,
               startsAt: savedBasicDetail.startsAt,
               title: savedBasicDetail.title,
               combinesWith: {
@@ -1662,6 +1654,8 @@ export class DiscountAutomaticService {
             },
           },
         });
+        console.log(data.data.discountAutomaticBasicCreate.userErrors);
+
         await this.basicDetailModel.findByIdAndUpdate(
           { _id: savedBasicDetail._id },
           {
@@ -1680,8 +1674,7 @@ export class DiscountAutomaticService {
         const data = await client.request(CREATEDISCOUNTAUTOMATICBASIC, {
           variables: {
             automaticBasicDiscount: {
-              recurringCycleLimit:
-                discountAutomaticBasicDto.recurringCycleLimit,
+              recurringCycleLimit: 1,
               startsAt: savedBasicDetail.startsAt,
               title: savedBasicDetail.title,
               combinesWith: {
@@ -1699,9 +1692,7 @@ export class DiscountAutomaticService {
               },
               customerGets: {
                 value: {
-                  percentage:
-                    parseFloat(savedDiscountCustomerGets.value.percentage) /
-                    100,
+                  percentage: savedDiscountCustomerGets.value.percentage,
                 },
                 items: {
                   products: {
@@ -1712,6 +1703,7 @@ export class DiscountAutomaticService {
             },
           },
         });
+
         await this.basicDetailModel.findByIdAndUpdate(
           { _id: savedBasicDetail._id },
           {
@@ -1727,6 +1719,26 @@ export class DiscountAutomaticService {
         );
         return data;
       }
+    }
+  }
+  async deleteDiscounts(discounts: any) {
+    if (!Array.isArray(discounts)) {
+      console.log(discounts);
+
+      const findDiscount = await this.discountBasicService.deleteBasicDetail(
+        discounts.basicDetail,
+      );
+      const deleteDiscount =
+        await this.discountAutomaticBasicModel.findByIdAndDelete(
+          { _id: discounts._id },
+          { new: true },
+        );
+      const data = await client.request(DELETEDISCOUNTS, {
+        variables: {
+          id: discounts.id,
+        },
+      });
+      return data.data;
     }
   }
 }

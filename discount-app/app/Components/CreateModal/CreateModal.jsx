@@ -41,7 +41,16 @@ export default function CreateModal({ isOpen, onOpen, onOpenChange }) {
                     variant={"solid"}
                   >
                     <ListboxItem key="new">
-                      <div className="flex justify-between ">
+                      <div
+                        className="flex justify-between "
+                        onClick={() => {
+                          navigate("/app/discounts/newType=AmountOffProduct", {
+                            replace: true,
+                            relative: "path",
+                            state: { some: "state" },
+                          });
+                        }}
+                      >
                         <div>
                           <p className="text-bold text-small ">
                             Amount off products

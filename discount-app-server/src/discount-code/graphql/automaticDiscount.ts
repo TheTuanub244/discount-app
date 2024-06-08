@@ -103,3 +103,14 @@ export const ACTIVEAUTOMATICDISCOUNTS = `mutation discountAutomaticActivate($id:
     }
   }
 }`;
+export const DELETEDISCOUNTS = `
+mutation discountAutomaticDelete($id: ID!) {
+  discountAutomaticDelete(id: $id) {
+    deletedAutomaticDiscountId
+    userErrors {
+      field
+      code
+      message
+    }
+  }
+}`;
