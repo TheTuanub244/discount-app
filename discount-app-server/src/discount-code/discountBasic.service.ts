@@ -539,14 +539,16 @@ export class DiscountBasicService {
       const savedDiscountItem = await newDiscountItem.save();
       discountItem.push(savedDiscountItem);
     } else if (item.products) {
+      console.log(item.products.productsToAdd);
+
       const newDiscountInput = new this.discountProductsInputModel({
         productsToAdd: item.products.productsToAdd,
       });
       const savedDiscountInput = await newDiscountInput.save();
+      console.log(savedDiscountInput);
 
       discountItem.push(savedDiscountInput);
     }
-    console.log(value);
 
     if (value.percentage) {
       const newDiscountValue = await this.createDiscountCustomerGetsValue({

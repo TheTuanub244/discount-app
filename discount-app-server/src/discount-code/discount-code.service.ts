@@ -949,4 +949,287 @@ export class DiscountCodeService {
       codeNodes,
     };
   }
+  async createAmountOffProduct({
+    basicDetail,
+    discountMinimumRequirement,
+    discountCustomerGets,
+    ...discountAutomaticBasicDto
+  }: DiscountCodeBasic) {
+    const savedBasicDetail = await this.discountBasicService.createBasicDetail({
+      combinesWith: {
+        orderDiscounts: basicDetail.combinesWith.orderDiscounts,
+        productDiscounts: basicDetail.combinesWith.productDiscounts,
+        shippingDiscounts: basicDetail.combinesWith.shippingDiscounts,
+      },
+      appliesOncePerCustomer: basicDetail.appliesOncePerCustomer,
+      code: basicDetail.code,
+      usageLimit: basicDetail.usageLimit,
+      title: basicDetail.title,
+      startsAt: basicDetail.startsAt,
+      endsAt: basicDetail.endsAt,
+      usePerOrderLimit: basicDetail.usePerOrderLimit,
+    });
+
+    const savedDiscountMinimumRequirement =
+      await this.discountBasicService.createDiscountMinimumRequirement(
+        discountMinimumRequirement,
+      );
+    const savedDiscountCustomerGets =
+      await this.discountBasicService.createDiscountCustomerGets({
+        appliesOnOneTimePurchase: discountCustomerGets.appliesOnOnetimePurchase,
+        appliesOnSubscription: discountCustomerGets.appliesOnOnetimePurchase,
+        item: discountCustomerGets.item,
+        value: discountCustomerGets.value,
+      });
+
+    const newAmountOffDiscount = new this.discountCodeBasicModel({
+      basicDetail: savedBasicDetail._id,
+      discountCustomerGets: savedDiscountCustomerGets._id,
+      discountMinimumRequirement: savedDiscountMinimumRequirement._id,
+      ...discountAutomaticBasicDto,
+    });
+    await this.basicDetailModel.findByIdAndUpdate(
+      { _id: savedBasicDetail._id },
+      {
+        $set: {
+          type: 'Code',
+          method: 'Product Discount',
+          status: 'ACTIVE',
+        },
+      },
+      { new: true },
+    );
+
+    await newAmountOffDiscount.save();
+    if (discountMinimumRequirement.subtotal) {
+      if (discountCustomerGets.value.discountAmount) {
+        const data = await client.request(createDiscountCodeBasic, {
+          variables: {
+            basicCodeDiscount: {
+              recurringCycleLimit:
+                discountAutomaticBasicDto.recurringCycleLimit,
+              startsAt: savedBasicDetail.startsAt,
+              title: savedBasicDetail.title,
+              code: savedBasicDetail.code,
+              combinesWith: {
+                orderDiscounts: savedBasicDetail.combinesWith.orderDiscounts,
+                shippingDiscounts:
+                  savedBasicDetail.combinesWith.shippingDiscounts,
+                productDiscounts:
+                  savedBasicDetail.combinesWith.productDiscounts,
+              },
+              minimumRequirement: {
+                subtotal: {
+                  greaterThanOrEqualToSubtotal:
+                    savedDiscountMinimumRequirement.subtotal,
+                },
+              },
+              customerSelection: {
+                all: true,
+              },
+              customerGets: {
+                value: {
+                  discountAmount: {
+                    amount:
+                      savedDiscountCustomerGets.value.discountAmount.amount,
+                    appliesOnEachItem: false,
+                  },
+                },
+                items: {
+                  products: {
+                    productsToAdd: savedDiscountCustomerGets.item.productsToAdd,
+                  },
+                },
+              },
+            },
+          },
+        });
+        console.log(
+          data.data.discountAutomaticBasicCreate.automaticDiscountNode,
+        );
+
+        await this.basicDetailModel.findByIdAndUpdate(
+          { _id: savedBasicDetail._id },
+          {
+            $set: {
+              summary:
+                data.data.discountCodeBasicCreate.codeDiscountNode.codeDiscount
+                  .summary,
+              id: data.data.discountCodeBasicCreate.codeDiscountNode.id,
+            },
+          },
+          { new: true },
+        );
+        return data;
+      } else if (discountCustomerGets.value.percentage) {
+        const data = await client.request(createDiscountCodeBasic, {
+          variables: {
+            basicCodeDiscount: {
+              recurringCycleLimit:
+                discountAutomaticBasicDto.recurringCycleLimit,
+              startsAt: savedBasicDetail.startsAt,
+              title: savedBasicDetail.title,
+              code: savedBasicDetail.code,
+
+              customerSelection: {
+                all: true,
+              },
+              combinesWith: {
+                orderDiscounts: savedBasicDetail.combinesWith.orderDiscounts,
+                shippingDiscounts:
+                  savedBasicDetail.combinesWith.shippingDiscounts,
+                productDiscounts:
+                  savedBasicDetail.combinesWith.productDiscounts,
+              },
+              minimumRequirement: {
+                subtotal: {
+                  greaterThanOrEqualToSubtotal:
+                    savedDiscountMinimumRequirement.subtotal,
+                },
+              },
+              customerGets: {
+                value: {
+                  percentage:
+                    parseFloat(savedDiscountCustomerGets.value.percentage) /
+                    100,
+                },
+                items: {
+                  products: {
+                    productsToAdd: savedDiscountCustomerGets.item.productsToAdd,
+                  },
+                },
+              },
+            },
+          },
+        });
+        await this.basicDetailModel.findByIdAndUpdate(
+          { _id: savedBasicDetail._id },
+          {
+            $set: {
+              summary:
+                data.data.discountCodeBasicCreate.codeDiscountNode.codeDiscount
+                  .summary,
+              id: data.data.discountCodeBasicCreate.codeDiscountNode.id,
+            },
+          },
+          { new: true },
+        );
+        return data;
+      }
+    } else if (discountMinimumRequirement.quantity) {
+      if (discountCustomerGets.value.discountAmount) {
+        const data = await client.request(createDiscountCodeBasic, {
+          variables: {
+            basicCodeDiscount: {
+              recurringCycleLimit:
+                discountAutomaticBasicDto.recurringCycleLimit,
+              startsAt: savedBasicDetail.startsAt,
+              title: savedBasicDetail.title,
+              code: savedBasicDetail.code,
+
+              customerSelection: {
+                all: true,
+              },
+              combinesWith: {
+                orderDiscounts: savedBasicDetail.combinesWith.orderDiscounts,
+                shippingDiscounts:
+                  savedBasicDetail.combinesWith.shippingDiscounts,
+                productDiscounts:
+                  savedBasicDetail.combinesWith.productDiscounts,
+              },
+              minimumRequirement: {
+                quantity: {
+                  greaterThanOrEqualToQuantity:
+                    savedDiscountMinimumRequirement.quantity.toString(),
+                },
+              },
+              customerGets: {
+                value: {
+                  discountAmount: {
+                    amount:
+                      savedDiscountCustomerGets.value.discountAmount.amount,
+                    appliesOnEachItem: false,
+                  },
+                },
+                items: {
+                  products: {
+                    productsToAdd: savedDiscountCustomerGets.item.productsToAdd,
+                  },
+                },
+              },
+            },
+          },
+        });
+        console.log(data.data.discountCodeBasicCreate.userErrors);
+
+        await this.basicDetailModel.findByIdAndUpdate(
+          { _id: savedBasicDetail._id },
+          {
+            $set: {
+              summary:
+                data.data.discountCodeBasicCreate.codeDiscountNode.codeDiscount
+                  .summary,
+              id: data.data.discountCodeBasicCreate.codeDiscountNode.id,
+            },
+          },
+          { new: true },
+        );
+        return data;
+      } else if (discountCustomerGets.value.percentage) {
+        const data = await client.request(createDiscountCodeBasic, {
+          variables: {
+            basicCodeDiscount: {
+              recurringCycleLimit:
+                discountAutomaticBasicDto.recurringCycleLimit,
+              startsAt: savedBasicDetail.startsAt,
+              title: savedBasicDetail.title,
+              code: savedBasicDetail.code,
+
+              combinesWith: {
+                orderDiscounts: savedBasicDetail.combinesWith.orderDiscounts,
+                shippingDiscounts:
+                  savedBasicDetail.combinesWith.shippingDiscounts,
+                productDiscounts:
+                  savedBasicDetail.combinesWith.productDiscounts,
+              },
+              customerSelection: {
+                all: true,
+              },
+              minimumRequirement: {
+                quantity: {
+                  greaterThanOrEqualToQuantity:
+                    savedDiscountMinimumRequirement.quantity.toString(),
+                },
+              },
+              customerGets: {
+                value: {
+                  percentage:
+                    parseFloat(savedDiscountCustomerGets.value.percentage) /
+                    100,
+                },
+                items: {
+                  products: {
+                    productsToAdd: savedDiscountCustomerGets.item.productsToAdd,
+                  },
+                },
+              },
+            },
+          },
+        });
+        await this.basicDetailModel.findByIdAndUpdate(
+          { _id: savedBasicDetail._id },
+          {
+            $set: {
+              summary:
+                data.data.discountCodeBasicCreate.codeDiscountNode.codeDiscount
+                  .summary,
+              id: data.data.discountCodeBasicCreate.codeDiscountNode.id,
+            },
+          },
+          { new: true },
+        );
+        return data;
+      }
+    }
+  }
 }
