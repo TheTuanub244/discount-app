@@ -16,11 +16,8 @@ import { ListboxWrapper } from "../CreateModal/ListBoxWrapper";
 import { getProductById } from "~/api/ProductAPI";
 export default function ProductModal({
   isOpen,
-  onOpen,
   onOpenChange,
   products,
-  value,
-  setValue,
   setProduct,
   product,
 }) {

@@ -77,6 +77,7 @@ export default function CreatePage() {
   const [valueCustomerGets, setValueCustomerGets] = useState(new Set([]));
   const [valueCustomerSpends, setValueCustomerSpends] = useState(new Set([]));
   const [productCustomerSpends, setProductCustomerSpends] = useState([]);
+  const [productCustomerGets, setProductCustomerGets] = useState([]);
   const [error, setError] = useState();
   const initialState = {
     title: "",
@@ -1963,21 +1964,15 @@ export default function CreatePage() {
       />
       <ProductModal
         isOpen={isProductCustomerGetsModalOpen}
-        onOpen={onProductCustomerGetsModalOpen}
         onOpenChange={onProductCustomerGetsModalOpenChange}
         products={products}
-        value={valueCustomerGets}
-        setValue={setValueCustomerGets}
         setProduct={setProductCustomerGets}
         product={productCustomerGets}
       />
       <ProductModal
         isOpen={isProductCustomerSpendsModalOpen}
-        onOpen={onProductCustomerSpendsModalOpen}
         onOpenChange={onProductCustomerSpendsModalOpenChange}
         products={products}
-        value={valueCustomerSpends}
-        setValue={setValueCustomerSpends}
         setProduct={setProductCustomerSpends}
         product={productCustomerSpends}
       />

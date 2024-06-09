@@ -14,13 +14,15 @@ import {
   useDisclosure,
   Avatar,
 } from "@nextui-org/react";
+import { now, getLocalTimeZone } from "@internationalized/date";
+
 import "../styles/main.css";
 import Calendar from "../Components/Calendar/Calendar";
 import { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "stream/consumers";
 import { useLoaderData } from "@remix-run/react";
 import { getAllDiscount } from "~/api/DiscountAPI";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 import { getAllProduct, getProductById } from "~/api/ProductAPI";
 import ProductModal from "~/Components/ProductModal/ProductModal";
 export async function loader({ params }: LoaderFunctionArgs) {
@@ -36,7 +38,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
   await Promise.all(
     findDiscount.discountCustomerGets.item.products.productsToAdd.map(
-      async (product) => {
+      async (product: any) => {
         const getProduct = await getProductById(product);
 
         discountCustomerGet.push(getProduct.data);
@@ -45,8 +47,10 @@ export async function loader({ params }: LoaderFunctionArgs) {
   );
   await Promise.all(
     findDiscount.discountCustomerBuys.item.products.productsToAdd.map(
-      async (product) => {
+      async (product: any) => {
         const getProduct = await getProductById(product);
+        console.log(getProduct.data.product.compareAtPriceRange);
+
         discountCustomerBuy.push(getProduct.data);
       },
     ),
@@ -61,19 +65,604 @@ export async function loader({ params }: LoaderFunctionArgs) {
 export default function EditPage() {
   const { discount, discountCustomerGets, discountCustomerBuys, products } =
     useLoaderData<typeof loader>();
-  const [productCustomerGets, setProductCustomerGets] = useState([]);
+  console.log(discount);
 
+  const [productCustomerSpends, setProductCustomerSpends] = useState([]);
+  const [productCustomerGets, setProductCustomerGets] = useState([]);
   const {
     isOpen: isProductCustomerGetsModalOpen,
     onOpen: onProductCustomerGetsModalOpen,
     onOpenChange: onProductCustomerGetsModalOpenChange,
   } = useDisclosure();
+  const {
+    isOpen: isProductCustomerSpendsModalOpen,
+    onOpen: onProductCustomerSpendsModalOpen,
+    onOpenChange: onProductCustomerSpendsModalOpenChange,
+  } = useDisclosure();
+  const initialState = {
+    title: discount.basicDetail.title,
+    minimumRequirement: {
+      subtotal: {
+        choose: true,
+      },
+      quantity: {
+        choose: false,
+      },
+      amount: 0,
+      products: [],
+    },
+    customerGets: {
+      quantity: discount.discountCustomerGets.value.discountOnQuantity.quantity,
+      discountValue: {
+        percentage: {
+          choose: true,
+          amount:
+            discount.discountCustomerGets.value.discountOnQuantity.effect
+              .percentage,
+        },
+        amountOff: {
+          choose: false,
+          amount: 0,
+        },
+        free: {
+          choose: false,
+        },
+      },
+      products: discount.discountCustomerGets.item.products.productsToAdd,
+    },
+    purchaseType: {
+      oneTimePurchase: discount.discountCustomerGets.appliesOnOnetimePurchase,
+      subscription: discount.discountCustomerGets.appliesOnSubscription,
+      both: false,
+    },
+    discountValue: {
+      percentage: {
+        choose: true,
+        amount:
+          discount.discountCustomerGets.value.discountOnQuantity.effect
+            .percentage,
+      },
+      fixedAmount: {
+        choose: true,
+        amount: 0,
+      },
+    },
+    shippingMinimumRequirement: {
+      subtotal: {
+        choose: false,
+        amount: 0,
+      },
+      quantity: {
+        choose: false,
+        amount: 0,
+      },
+    },
+    maxUses: {
+      useInTotal: {
+        choose: false,
+        amount: 0,
+      },
+      usePerCustomer: {
+        choose: false,
+      },
+    },
+    usesPerOrder: {
+      choose: true,
+      amount: discount.basicDetail.usePerOrderLimit,
+    },
+    combinations: {
+      product: discount.basicDetail.combinesWith.productDiscounts,
+      order: discount.basicDetail.combinesWith.orderDiscounts,
+      shipping: discount.basicDetail.combinesWith.shippingDiscounts,
+    },
+    subscription: {
+      firstPay: false,
+      multiplePay: false,
+      amount: 0,
+    },
+    startDate: {
+      date: now(getLocalTimeZone()),
+    },
+    endDate: {
+      choose: false,
+      date: "",
+    },
+  };
+  const reducer = (state: any, action: any) => {
+    switch (action.type) {
+      case "title":
+        return { ...state, title: action.payload };
+      case "id":
+        return { ...state, id: action.payload };
+      case "discountValue":
+        console.log(action);
+
+        if (action.subType == "fixedAmount") {
+          if (action.payload) {
+            return {
+              ...state,
+
+              discountValue: {
+                percentage: {
+                  choose: false,
+                  amount: 0,
+                },
+                fixedAmount: {
+                  choose: true,
+                  amount: action.payload,
+                },
+              },
+            };
+          } else {
+            return {
+              ...state,
+
+              discountValue: {
+                percentage: {
+                  choose: false,
+                  amount: 0,
+                },
+                fixedAmount: {
+                  choose: true,
+                  amount: 0,
+                },
+              },
+            };
+          }
+        } else {
+          if (action.payload) {
+            return {
+              ...state,
+
+              discountValue: {
+                percentage: {
+                  choose: true,
+                  amount: action.payload,
+                },
+                fixedAmount: {
+                  choose: false,
+                  amount: 0,
+                },
+              },
+            };
+          } else {
+            return {
+              ...state,
+
+              discountValue: {
+                percentage: {
+                  choose: true,
+                  amount: 0,
+                },
+                fixedAmount: {
+                  choose: false,
+                  amount: 0,
+                },
+              },
+            };
+          }
+        }
+      case "minimumRequirement":
+        if (action.subtype == "products") {
+          return {
+            ...state,
+            minimumRequirement: {
+              ...state.minimumRequirement,
+              products: productCustomerSpends,
+            },
+          };
+        }
+        if (action.subType == "subtotal") {
+          return {
+            ...state,
+            minimumRequirement: {
+              ...state.minimumRequirement,
+              subtotal: {
+                ...state.minimumRequirement.subtotal,
+                choose: true,
+              },
+              quantity: {
+                ...state.minimumRequirement.quantity,
+                choose: false,
+              },
+            },
+          };
+        } else if (action.subType == "quantity") {
+          return {
+            ...state,
+            minimumRequirement: {
+              ...state.minimumRequirement,
+              subtotal: {
+                ...state.minimumRequirement.subtotal,
+                choose: false,
+              },
+              quantity: {
+                ...state.minimumRequirement.quantity,
+                choose: true,
+              },
+            },
+          };
+        } else {
+          return {
+            ...state,
+            minimumRequirement: {
+              ...state.minimumRequirement,
+              amount: action.payload,
+            },
+          };
+        }
+      case "customerGets":
+        if (action.subType == "quantity") {
+          return {
+            ...state,
+            customerGets: {
+              ...state.customerGets,
+              quantity: action.payload,
+            },
+          };
+        }
+        if (action.subType == "percentage") {
+          return {
+            ...state,
+            customerGets: {
+              ...state.customerGets,
+              discountValue: {
+                percentage: {
+                  choose: true,
+                  amount: action.payload,
+                },
+                amountOff: {
+                  choose: false,
+                  amount: 0,
+                },
+                free: {
+                  choose: false,
+                },
+              },
+            },
+          };
+        }
+        if (action.subType == "amountOff") {
+          return {
+            ...state,
+            customerGets: {
+              ...state.customerGets,
+              discountValue: {
+                percentage: {
+                  choose: false,
+                  amount: 0,
+                },
+                amountOff: {
+                  choose: true,
+                  amount: action.payload,
+                },
+                free: {
+                  choose: false,
+                },
+              },
+            },
+          };
+        } else if (action.subType == "free") {
+          return {
+            ...state,
+            customerGets: {
+              ...state.customerGets,
+              discountValue: {
+                percentage: {
+                  choose: false,
+                  amount: 0,
+                },
+                amountOff: {
+                  choose: false,
+                  amount: 0,
+                },
+                free: {
+                  choose: true,
+                },
+              },
+            },
+          };
+        }
+        if (action.subtype == "products") {
+          return {
+            ...state,
+            customerGets: {
+              ...state.customerGets,
+              products: productCustomerGets,
+            },
+          };
+        }
+      case "endDate":
+        if (action.subType == "choose") {
+          return {
+            ...state,
+            endDate: {
+              ...state.endDate,
+              choose: action.payload,
+            },
+          };
+        }
+      case "shippingMinimumRequirement":
+        if (action.subtype == "no") {
+          return {
+            ...state,
+            shippingMinimumRequirement: {
+              subtotal: {
+                ...state.shippingMinimumRequirement.subtotal,
+                choose: false,
+              },
+              quantity: {
+                ...state.shippingMinimumRequirement.quantity,
+                choose: false,
+              },
+            },
+          };
+        } else if (action.subtype == "subtotal") {
+          return {
+            ...state,
+            shippingMinimumRequirement: {
+              subtotal: {
+                amount: action.payload,
+                choose: true,
+              },
+              quantity: {
+                ...state.shippingMinimumRequirement.quantity,
+                choose: false,
+              },
+            },
+          };
+        } else {
+          return {
+            ...state,
+            shippingMinimumRequirement: {
+              subtotal: {
+                ...state.shippingMinimumRequirement.subtotal,
+                choose: false,
+              },
+              quantity: {
+                amount: action.payload,
+                choose: true,
+              },
+            },
+          };
+        }
+      case "usesPerOrder":
+        if (action.subType == "choose") {
+          return {
+            ...state,
+            usesPerOrder: {
+              ...state.usesPerOrder,
+              choose: action.payload,
+            },
+          };
+        }
+        if (action.subType == "amount") {
+          return {
+            ...state,
+            usesPerOrder: {
+              ...state.usesPerOrder,
+              amount: action.payload,
+            },
+          };
+        }
+      case "purchaseType":
+        console.log(action.payload);
+        if (action.payload == "oneTime") {
+          return {
+            ...state,
+            purchaseType: {
+              oneTimePurchase: true,
+              subscription: false,
+              both: false,
+            },
+          };
+        } else if (action.payload == "subscription") {
+          return {
+            ...state,
+            purchaseType: {
+              oneTimePurchase: false,
+              subscription: true,
+              both: false,
+            },
+          };
+        } else {
+          return {
+            ...state,
+            purchaseType: {
+              oneTimePurchase: false,
+              subscription: false,
+              both: true,
+            },
+          };
+        }
+        break;
+      case "maxUses":
+        if (action.subType == "useInTotal") {
+          return {
+            ...state,
+            maxUses: {
+              ...state.maxUses,
+              useInTotal: {
+                ...state.maxUses.useInTotal,
+                choose: action.payload,
+              },
+            },
+          };
+        } else if (action.subType == "usePerCustomer") {
+          return {
+            ...state,
+            maxUses: {
+              ...state.maxUses,
+              usePerCustomer: {
+                ...state.maxUses.usePerCustomer,
+                choose: action.payload,
+              },
+            },
+          };
+        } else {
+          return {
+            ...state,
+            maxUses: {
+              ...state.maxUses,
+              useInTotal: {
+                ...state.maxUses.useInTotal,
+                amount: action.payload,
+              },
+            },
+          };
+        }
+      case "subscription":
+        if (action.subtype == "firstPay") {
+          return {
+            ...state,
+            subscription: {
+              firstPay: true,
+              multiplePay: false,
+            },
+          };
+        } else if (action.subtype == "multiplePay") {
+          return {
+            ...state,
+            subscription: {
+              firstPay: false,
+              multiplePay: true,
+              amount: action.payload,
+            },
+          };
+        } else if (action.subtype == "all") {
+          return {
+            ...state,
+            subscription: {
+              firstPay: true,
+              multiplePay: true,
+            },
+          };
+        }
+      case "combinations":
+        const check = {
+          product: false,
+          order: false,
+          shipping: false,
+        };
+        action.payload.map((value: string) => {
+          if (value == "1") {
+            check.product = true;
+          } else if (value == "2") {
+            check.order = true;
+          } else if (value == "3") {
+            check.shipping = true;
+          }
+        });
+        return {
+          ...state,
+          combinations: {
+            product: check.product,
+            order: check.order,
+            shipping: check.shipping,
+          },
+        };
+      case "startDate":
+        return {
+          ...state,
+          startDate: {
+            date: action.payload,
+          },
+        };
+      default:
+        return state;
+    }
+  };
+  const [state, dispatch] = useReducer(reducer, initialState);
+
   const renderSelectedProductCustomerSpends = useMemo(() => {
     return (
       <div>
-        {discountCustomerBuys.length != 0 && (
+        {productCustomerSpends.length != 0 ? (
           <div className="mt-10 border p-2 rounded-md">
-            {discountCustomerBuys?.map((value) => (
+            {productCustomerSpends?.map((value: any) => (
+              <div className="flex gap-1 mb-2" key={value.id}>
+                <Avatar src={value.featuredImage.url} className="mt-2" />
+                <div className="flex flex-col">
+                  <span className="ml-10 mt-2 font-xl font-semibold">
+                    {value.title}
+                  </span>
+                  <span className="ml-10 mt-2 font-xl font-semibold">
+                    đ{value.compareAtPriceRange.maxVariantCompareAtPrice.amount}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-10 border p-2 rounded-md">
+            {discountCustomerBuys?.map((value: any) => {
+              return (
+                <div className="flex gap-1 mb-2" key={value.product.id}>
+                  <Avatar
+                    src={value.product.featuredImage.url}
+                    className="mt-2"
+                  />
+                  <div className="flex flex-col">
+                    <span className="ml-10 mt-2 font-xl font-semibold">
+                      {value.product.title}
+                    </span>
+                    <span className="ml-10 mt-2 font-xl font-semibold">
+                      đ
+                      {
+                        value.product.compareAtPriceRange
+                          .maxVariantCompareAtPrice.amount
+                      }
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }, [productCustomerSpends]);
+  const renderMaxUsesInput = useMemo(() => {
+    return (
+      <div>
+        {state.maxUses.useInTotal.choose && (
+          <Input
+            variant="bordered"
+            className="w-20 mt-2 ml-5"
+            onChange={(e) =>
+              dispatch({
+                type: "maxUses",
+                subType: "amount",
+                payload: e.target.value,
+              })
+            }
+          />
+        )}
+      </div>
+    );
+  }, [state]);
+  const renderSelectedProductCustomerGets = useMemo(() => {
+    return (
+      <div>
+        {productCustomerGets.length != 0 ? (
+          <div className="mt-10 border p-2 rounded-md">
+            {productCustomerGets?.map((value: any) => (
+              <div className="flex gap-1 mb-2" key={value.id}>
+                <Avatar src={value.featuredImage.url} className="mt-2" />
+                <div className="flex flex-col">
+                  <span className="ml-10 mt-2 font-xl font-semibold">
+                    {value.title}
+                  </span>
+                  <span className="ml-10 mt-2 font-xl font-semibold">
+                    đ{value.compareAtPriceRange.maxVariantCompareAtPrice.amount}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-10 border p-2 rounded-md">
+            {discountCustomerGets?.map((value: any) => (
               <div className="flex gap-1 mb-2" key={value.product.id}>
                 <Avatar
                   src={value.product.featuredImage.url}
@@ -97,7 +686,10 @@ export default function EditPage() {
         )}
       </div>
     );
-  }, [discountCustomerBuys]);
+  }, [productCustomerGets]);
+  useEffect(() => {
+    console.log(state);
+  }, [state]);
   const renderRadioDiscountValue = useMemo(() => {
     return (
       <RadioGroup
@@ -112,12 +704,12 @@ export default function EditPage() {
             ? "percentage"
             : "amountOff"
         }
-        // onValueChange={(value) => {
-        //   dispatch({ type: "customerGets", subType: value });
-        // }}
+        onValueChange={(value) => {
+          dispatch({ type: "customerGets", subType: value });
+        }}
       >
         <Radio value="percentage">Percentage</Radio>
-        {/* {state.customerGets.discountValue.percentage.choose && (
+        {state.customerGets.discountValue.percentage.choose && (
           <Input
             onChange={(e) =>
               dispatch({
@@ -125,6 +717,12 @@ export default function EditPage() {
                 subType: "percentage",
                 payload: e.target.value,
               })
+            }
+            placeholder={
+              discount.discountCustomerGets.value.discountOnQuantity.effect
+                .percentage &&
+              discount.discountCustomerGets.value.discountOnQuantity.effect
+                .percentage * 100
             }
             className="w-1/2 ml-5"
             type="number"
@@ -135,17 +733,23 @@ export default function EditPage() {
               </div>
             }
           />
-        )} */}
+        )}
         <Radio value="amountOff">Amount off each</Radio>
-        {/* {state.customerGets.discountValue.amountOff.choose && (
+        {state.customerGets.discountValue.amountOff.choose && (
           <Input
-            // onChange={(e) =>
-            //   dispatch({
-            //     type: "customerGets",
-            //     subType: "amountOff",
-            //     payload: e.target.value,
-            //   })
-            // }
+            onChange={(e) =>
+              dispatch({
+                type: "customerGets",
+                subType: "amountOff",
+                payload: e.target.value,
+              })
+            }
+            placeholder={
+              discount.discountCustomerGets.value.discountOnQuantity.effect
+                .discountAmount &&
+              discount.discountCustomerGets.value.discountOnQuantity.effect
+                .discountAmount.amount
+            }
             className="w-1/2 ml-5"
             type="number"
             variant="bordered"
@@ -155,11 +759,11 @@ export default function EditPage() {
               </div>
             }
           />
-        )} */}
+        )}
         <Radio value="free">Free</Radio>
       </RadioGroup>
     );
-  }, [discount]);
+  }, [state]);
   const renderMaxUses = useMemo(() => {
     return (
       <div
@@ -169,13 +773,13 @@ export default function EditPage() {
       >
         {discount.basicDetail.usePerOrderLimit && (
           <Input
-            // onChange={(e) =>
-            //   dispatch({
-            //     type: "usesPerOrder",
-            //     subType: "amount",
-            //     payload: e.target.value,
-            //   })
-            // }
+            onChange={(e) =>
+              dispatch({
+                type: "usesPerOrder",
+                subType: "amount",
+                payload: e.target.value,
+              })
+            }
             placeholder={discount.basicDetail.usePerOrderLimit}
             type="number"
             variant="bordered"
@@ -184,37 +788,7 @@ export default function EditPage() {
         )}
       </div>
     );
-  }, [discount]);
-  const renderSelectedProductCustomerGets = useMemo(() => {
-    return (
-      <div>
-        {discountCustomerGets.length != 0 && (
-          <div className="mt-10 border p-2 rounded-md">
-            {discountCustomerGets?.map((value) => (
-              <div className="flex gap-1 mb-2" key={value.product.id}>
-                <Avatar
-                  src={value.product.featuredImage.url}
-                  className="mt-2"
-                />
-                <div className="flex flex-col">
-                  <span className="ml-10 mt-2 font-xl font-semibold">
-                    {value.product.title}
-                  </span>
-                  <span className="ml-10 mt-2 font-xl font-semibold">
-                    đ
-                    {
-                      value.product.compareAtPriceRange.maxVariantCompareAtPrice
-                        .amount
-                    }
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }, [discountCustomerGets]);
+  }, [state]);
   const renderDiscountName = useMemo(() => {
     return (
       <div className="flex gap-1 mt-2">
@@ -224,7 +798,7 @@ export default function EditPage() {
         <h1 style={{ fontSize: 15 }}>can be combined with: </h1>
       </div>
     );
-  }, [discount]);
+  }, [state]);
   return (
     <div className="flex flex-row justify-between background">
       <div className="w-1/2">
@@ -315,13 +889,13 @@ export default function EditPage() {
                 ? "subtotal"
                 : "quantity"
             }
-            // onValueChange={(value) => {
-            //   if (value == "subtotal") {
-            //     dispatch({ type: "minimumRequirement", subType: "subtotal" });
-            //   } else {
-            //     dispatch({ type: "minimumRequirement", subType: "quantity" });
-            //   }
-            // }}
+            onValueChange={(value) => {
+              if (value == "subtotal") {
+                dispatch({ type: "minimumRequirement", subType: "subtotal" });
+              } else {
+                dispatch({ type: "minimumRequirement", subType: "quantity" });
+              }
+            }}
             style={{
               marginTop: 18,
             }}
@@ -343,12 +917,12 @@ export default function EditPage() {
                     variant="bordered"
                     className="w-22"
                     placeholder={discount.discountCustomerBuys.value.amount}
-                    // onChange={(e) =>
-                    //   dispatch({
-                    //     type: "minimumRequirement",
-                    //     payload: e.target.value,
-                    //   })
-                    // }
+                    onChange={(e) =>
+                      dispatch({
+                        type: "minimumRequirement",
+                        payload: e.target.value,
+                      })
+                    }
                   />
                 </>
               ) : (
@@ -358,13 +932,12 @@ export default function EditPage() {
                     variant="bordered"
                     className="w-22"
                     placeholder={discount.discountCustomerBuys.value.quantity}
-
-                    // onChange={(e) =>
-                    //   dispatch({
-                    //     type: "minimumRequirement",
-                    //     payload: e.target.value,
-                    //   })
-                    // }
+                    onChange={(e) =>
+                      dispatch({
+                        type: "minimumRequirement",
+                        payload: e.target.value,
+                      })
+                    }
                   />
                 </>
               )}
@@ -393,7 +966,7 @@ export default function EditPage() {
             <Button
               color="danger"
               className="ml-5"
-              // onClick={onProductCustomerSpendsModalOpen}
+              onClick={onProductCustomerSpendsModalOpen}
             >
               Browse
             </Button>
@@ -432,13 +1005,13 @@ export default function EditPage() {
                   discount.discountCustomerGets.value.discountOnQuantity
                     .quantity
                 }
-                // onChange={(e) =>
-                //   dispatch({
-                //     type: "customerGets",
-                //     subType: "quantity",
-                //     payload: e.target.value,
-                //   })
-                // }
+                onChange={(e) =>
+                  dispatch({
+                    type: "customerGets",
+                    subType: "quantity",
+                    payload: e.target.value,
+                  })
+                }
               />
             </div>
             <div
@@ -465,9 +1038,9 @@ export default function EditPage() {
             <Button
               color="danger"
               className="ml-5"
-              // onClick={() => {
-              //   onProductCustomerGetsModalOpen();
-              // }}
+              onClick={() => {
+                onProductCustomerGetsModalOpen();
+              }}
             >
               Browse
             </Button>
@@ -499,13 +1072,13 @@ export default function EditPage() {
               defaultValue={discount.basicDetail.usePerOrderLimit && "1"}
             >
               <Checkbox
-                // onChange={(e) =>
-                //   dispatch({
-                //     type: "usesPerOrder",
-                //     subType: "choose",
-                //     payload: e.target.checked,
-                //   })
-                // }
+                onChange={(e) =>
+                  dispatch({
+                    type: "usesPerOrder",
+                    subType: "choose",
+                    payload: e.target.checked,
+                  })
+                }
                 size="md"
                 value={"1"}
               >
@@ -530,26 +1103,26 @@ export default function EditPage() {
           <CheckboxGroup style={{ marginTop: 10 }}>
             <Checkbox
               value={"useInTotal"}
-              // onChange={(e) => {
-              //   dispatch({
-              //     type: "maxUses",
-              //     subType: "useInTotal",
-              //     payload: e.target.checked,
-              //   });
-              // }}
+              onChange={(e) => {
+                dispatch({
+                  type: "maxUses",
+                  subType: "useInTotal",
+                  payload: e.target.checked,
+                });
+              }}
             >
               Limit number of times this discount can be used in total
             </Checkbox>
-            {/* {renderMaxUsesInput} */}
+            {renderMaxUsesInput}
             <Checkbox
               value={"usePerCustomer"}
-              // onChange={(e) =>
-              //   dispatch({
-              //     type: "maxUses",
-              //     subType: "usePerCustomer",
-              //     payload: e.target.checked,
-              //   })
-              // }
+              onChange={(e) =>
+                dispatch({
+                  type: "maxUses",
+                  subType: "usePerCustomer",
+                  payload: e.target.checked,
+                })
+              }
             >
               Limit to one use per customer
             </Checkbox>
@@ -570,9 +1143,9 @@ export default function EditPage() {
           {renderDiscountName}
           <CheckboxGroup
             className="mt-2"
-            // onChange={(value) =>
-            //   dispatch({ type: "combinations", payload: value })
-            // }
+            onChange={(value) =>
+              dispatch({ type: "combinations", payload: value })
+            }
             defaultValue={
               discount.basicDetail.combinesWith.orderDiscounts &&
               discount.basicDetail.combinesWith.productDiscounts &&
@@ -626,18 +1199,18 @@ export default function EditPage() {
             Active dates
           </h1>
           <Calendar
-            // date={state.startDate.date}
-            // dispatch={dispatch}
+            date={state.startDate.date}
+            dispatch={dispatch}
             type="startDate"
           />
           <Checkbox
-            // onChange={(e) => {
-            //   dispatch({
-            //     type: "endDate",
-            //     subType: "choose",
-            //     payload: e.target.checked,
-            //   });
-            // }}
+            onChange={(e) => {
+              dispatch({
+                type: "endDate",
+                subType: "choose",
+                payload: e.target.checked,
+              });
+            }}
             style={{
               marginTop: 10,
             }}
@@ -668,13 +1241,17 @@ export default function EditPage() {
       </div>
       <ProductModal
         isOpen={isProductCustomerGetsModalOpen}
-        onOpen={onProductCustomerGetsModalOpen}
         onOpenChange={onProductCustomerGetsModalOpenChange}
         products={products}
-        value={"valueCustomerGets"}
-        setValue={"setValueCustomerGets"}
         setProduct={setProductCustomerGets}
         product={productCustomerGets}
+      />
+      <ProductModal
+        isOpen={isProductCustomerSpendsModalOpen}
+        onOpenChange={onProductCustomerSpendsModalOpenChange}
+        products={products}
+        setProduct={setProductCustomerSpends}
+        product={productCustomerSpends}
       />
     </div>
   );
