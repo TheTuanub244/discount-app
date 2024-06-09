@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { useLoaderData, useNavigate } from "@remix-run/react";
+import { getIdFromUrl } from "../../../utils/UrlUtils";
 import {
   Table,
   TableHeader,
@@ -112,6 +114,15 @@ export default function App({ onOpen }) {
       return sortDescriptor.direction === "descending" ? -cmp : cmp;
     });
   }, [sortDescriptor, items]);
+  const navigate = useNavigate();
+  const moveToEditPage = (discount) => {
+    const split = getIdFromUrl(discount.basicDetail.id);
+    navigate(`/app/discounts/${split.type}/${split.id}`, {
+      replace: true,
+      relative: "path",
+      state: { some: "state" },
+    });
+  };
   const renderCell = React.useCallback(
     (discount, columnKey) => {
       const cellValue = discount.basicDetail[columnKey];
@@ -216,7 +227,13 @@ export default function App({ onOpen }) {
                   <DropdownItem onClick={() => deactiveAllDiscounts(discount)}>
                     Deactive Discount
                   </DropdownItem>
-                  <DropdownItem>View</DropdownItem>
+                  <DropdownItem
+                    onClick={() => {
+                      moveToEditPage(discount);
+                    }}
+                  >
+                    View
+                  </DropdownItem>
                   <DropdownItem onClick={() => deleteDiscount(discount)}>
                     Delete
                   </DropdownItem>
@@ -364,6 +381,12 @@ export default function App({ onOpen }) {
   ]);
   const deleteDiscount = async (discounts) => {
     const data = await deleteDiscounts(discounts);
+
+    if (!data) {
+      setDiscounts([]);
+    } else {
+      setDiscounts(data);
+    }
   };
   const bottomContent = React.useMemo(() => {
     return (
@@ -405,11 +428,12 @@ export default function App({ onOpen }) {
   }, [selectedKeys, items.length, page, pages, hasSearchFilter]);
   const deactiveAllDiscounts = async (discounts) => {
     const data = await deactiveAllDiscount(discounts);
+
     setDiscounts(data);
   };
   const activeAllDiscounts = async (discounts) => {
     const data = await activeAllDiscount(discounts);
-    console.log(data);
+
     setDiscounts(data);
   };
   const renderColumn = React.useMemo(() => {

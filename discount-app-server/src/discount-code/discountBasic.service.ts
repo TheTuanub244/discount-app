@@ -254,7 +254,7 @@ export class DiscountBasicService {
   ) {
     const values = await this.discountCustomerBuysValueModel.find();
     if (values.length == 0) {
-      const newValue = new this.discountCustomerBuysModel(
+      const newValue = new this.discountCustomerBuysValueModel(
         discountCustomerBuysValueDto,
       );
       return newValue.save();
@@ -314,9 +314,12 @@ export class DiscountBasicService {
       ]);
       if (items.length == 0 && values.length == 0) {
         const savedValue = await this.createDiscountCustomerBuysValue(value);
+        console.log(savedValue);
+
         const savedProductsInput = await this.createDiscountProductsInput(
           item.products,
         );
+        console.log(savedProductsInput);
 
         const newItem = new this.discountItemsModel({
           all: item.all,
@@ -332,7 +335,9 @@ export class DiscountBasicService {
           _id: newDiscountCustomerBuys._id,
           item: {
             all: savedItem.all,
-            products: savedItem.products,
+            products: {
+              productsToAdd: item.products.productsToAdd,
+            },
           },
           value: {
             amount: value.amount,
@@ -343,6 +348,7 @@ export class DiscountBasicService {
         await Promise.all(
           items.map(async (index) => {
             const item_info = index.item_info[0];
+
             saveDiscountItems = item_info;
             const findProducts = await this.discountProductsInputModel.findById(
               item_info.products,
@@ -539,15 +545,15 @@ export class DiscountBasicService {
       const savedDiscountItem = await newDiscountItem.save();
       discountItem.push(savedDiscountItem);
     } else if (item.products) {
-      console.log(item.products.productsToAdd);
-
-      const newDiscountInput = new this.discountProductsInputModel({
-        productsToAdd: item.products.productsToAdd,
+      const savedDiscountInput = await this.createDiscountProductsInput(
+        item.products,
+      );
+      const newItem = new this.discountItemsModel({
+        all: item.all,
+        products: savedDiscountInput._id,
       });
-      const savedDiscountInput = await newDiscountInput.save();
-      console.log(savedDiscountInput);
-
-      discountItem.push(savedDiscountInput);
+      const savedItem = await newItem.save();
+      discountItem.push(savedItem);
     }
 
     if (value.percentage) {
@@ -621,7 +627,7 @@ export class DiscountBasicService {
       const savedDiscountCustomerGets = await newDiscountCustomerGets.save();
       return {
         _id: savedDiscountCustomerGets._id,
-        item: discountItem[0],
+        item: item.products,
         value: discountValue[0],
         appliesOnOnetimePurchase:
           discountCustomerGetsDto.appliesOnOneTimePurchase,
@@ -709,7 +715,7 @@ export class DiscountBasicService {
           _id: savedDiscountValue._id,
           percentage: null,
           discountOnQuantity: {
-            quantity: newDiscountOnQuantity.quantity,
+            quantity: discountOnQuantity.quantity,
             effect: {
               discountAmount: discountOnQuantity.effect.discountAmount,
               percentage: null,

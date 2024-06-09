@@ -21,6 +21,8 @@ import {
 import { BasicDetail } from '../schemas/BasicDetails.schema';
 import { CombinesWith } from '../schemas/CombinesWith.schema';
 import { DiscountCustomerGets } from 'src/schemas/DiscountCustomerGets.schema';
+import { populate } from 'dotenv';
+import path from 'path';
 
 @Injectable()
 export class DiscountAutomaticService {
@@ -344,7 +346,10 @@ export class DiscountAutomaticService {
                     percentage: discountCustomerGets.value.percentage,
                   },
                   items: {
-                    products: savedDiscountCustomerGets.item.products,
+                    products: {
+                      productsToAdd:
+                        savedDiscountCustomerGets.item.productsToAdd,
+                    },
                   },
                 },
               },
@@ -424,7 +429,9 @@ export class DiscountAutomaticService {
                   },
                   customerBuys: {
                     items: {
-                      products: savedDiscountCustomerBuys.item.products,
+                      products: {
+                        productsToAdd: savedDiscountCustomerBuys.item.products,
+                      },
                     },
                     value: {
                       amount: discountCustomerBuys.value.amount.toString(),
@@ -594,6 +601,8 @@ export class DiscountAutomaticService {
             );
             return data;
           } else if (discountCustomerBuys.value.amount) {
+            console.log(savedDiscountCustomerGets.item);
+
             const data = await client.request(CREATEDISCOUNTAUTOMATICBXGY, {
               variables: {
                 automaticBxgyDiscount: {
@@ -637,6 +646,7 @@ export class DiscountAutomaticService {
                 },
               },
             });
+            console.log(data.data.discountAutomaticBxgyCreate.userErrors);
 
             await this.basicDetailModel.findByIdAndUpdate(
               { _id: savedBasicDetail._id },
@@ -1059,8 +1069,14 @@ export class DiscountAutomaticService {
         path: 'basicDetail',
         populate: { path: 'combinesWith' },
       })
-      .populate({ path: 'discountCustomerGets', populate: { path: 'item' } })
-      .populate({ path: 'discountCustomerGets', populate: { path: 'value' } });
+      .populate({
+        path: 'discountCustomerGets',
+        populate: { path: 'item', populate: { path: 'products' } },
+      })
+      .populate({
+        path: 'discountCustomerGets',
+        populate: { path: 'value', populate: { path: 'discountOnQuantity' } },
+      });
     basics.map((basic) => {
       automaticNodes.edges.push(basic);
     });
@@ -1072,7 +1088,7 @@ export class DiscountAutomaticService {
       })
       .populate({
         path: 'discountCustomerBuys',
-        populate: { path: 'item' },
+        populate: { path: 'item', populate: { path: 'products' } },
       })
       .populate({
         path: 'discountCustomerBuys',
@@ -1080,11 +1096,17 @@ export class DiscountAutomaticService {
       })
       .populate({
         path: 'discountCustomerGets',
-        populate: { path: 'item' },
+        populate: { path: 'item', populate: { path: 'products' } },
       })
       .populate({
         path: 'discountCustomerGets',
-        populate: { path: 'value' },
+        populate: {
+          path: 'value',
+          populate: {
+            path: 'discountOnQuantity',
+            populate: { path: 'effect' },
+          },
+        },
       });
     bxgys.map((bxgy) => {
       automaticNodes.edges.push(bxgy);
@@ -1456,14 +1478,6 @@ export class DiscountAutomaticService {
 
     return newDiscounts[0];
   }
-  async deleteAllDiscounts(discounts) {
-    if (Array.isArray(discounts)) {
-      discounts.map((value) => {
-        if (value.type == 'Automatic') {
-        }
-      });
-    }
-  }
   async createAmountOffProduct({
     basicDetail,
     discountMinimumRequirement,
@@ -1654,7 +1668,6 @@ export class DiscountAutomaticService {
             },
           },
         });
-        console.log(data.data.discountAutomaticBasicCreate.userErrors);
 
         await this.basicDetailModel.findByIdAndUpdate(
           { _id: savedBasicDetail._id },
@@ -1723,22 +1736,61 @@ export class DiscountAutomaticService {
   }
   async deleteDiscounts(discounts: any) {
     if (!Array.isArray(discounts)) {
-      console.log(discounts);
+      await this.discountBasicService.deleteBasicDetail(discounts.basicDetail);
 
-      const findDiscount = await this.discountBasicService.deleteBasicDetail(
-        discounts.basicDetail,
-      );
-      const deleteDiscount =
-        await this.discountAutomaticBasicModel.findByIdAndDelete(
-          { _id: discounts._id },
-          { new: true },
-        );
+      if (discounts.basicDetail.method == 'Product Discount') {
+        await this.discountAutomaticBasicModel.findOneAndDelete({
+          basicDetail: discounts.basicDetail._id,
+        });
+        await this.discountAutomaticBxGyModel.findOneAndDelete({
+          basicDetail: discounts.basicDetail._id,
+        });
+      } else if (discounts.basicDetail.method == 'Order Discount') {
+        await this.discountAutomaticBasicModel.findOneAndDelete({
+          basicDetail: discounts.basicDetail._id,
+        });
+      } else if (discounts.basicDetail.method == 'Shipping Discount') {
+        await this.automaticDiscountFreeShippingModel.findOneAndDelete({
+          basicDetail: discounts.basicDetail._id,
+        });
+      }
       const data = await client.request(DELETEDISCOUNTS, {
         variables: {
-          id: discounts.id,
+          id: discounts.basicDetail.id,
         },
       });
-      return data.data;
+      if (data.data) {
+        const newData = await this.getAllAutomaticCode();
+        return newData.automaticNodes;
+      }
+    } else {
+      discounts.map(async (discount) => {
+        await this.discountBasicService.deleteBasicDetail(discount.basicDetail);
+
+        if (discount.basicDetail.method == 'Product Discount') {
+          await this.discountAutomaticBasicModel.findOneAndDelete({
+            basicDetail: discount.basicDetail._id,
+          });
+          await this.discountAutomaticBxGyModel.findOneAndDelete({
+            basicDetail: discount.basicDetail._id,
+          });
+        } else if (discount.basicDetail.method == 'Order Discount') {
+          await this.discountAutomaticBasicModel.findOneAndDelete({
+            basicDetail: discount.basicDetail._id,
+          });
+        } else if (discount.basicDetail.method == 'Shipping Discount') {
+          await this.automaticDiscountFreeShippingModel.findOneAndDelete({
+            basicDetail: discount.basicDetail._id,
+          });
+        }
+        await client.request(DELETEDISCOUNTS, {
+          variables: {
+            id: discount.basicDetail.id,
+          },
+        });
+      });
+      const newData = await this.getAllAutomaticCode();
+      return newData.automaticNodes;
     }
   }
 }

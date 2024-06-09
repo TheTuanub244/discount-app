@@ -77,7 +77,6 @@ export default function CreatePage() {
   const [valueCustomerGets, setValueCustomerGets] = useState(new Set([]));
   const [valueCustomerSpends, setValueCustomerSpends] = useState(new Set([]));
   const [productCustomerSpends, setProductCustomerSpends] = useState([]);
-  const [productCustomerGets, setProductCustomerGets] = useState([]);
   const [error, setError] = useState();
   const initialState = {
     title: "",
@@ -1319,11 +1318,11 @@ export default function CreatePage() {
       const data = await createAmountOffProduct(state);
     }
 
-    // navigate("/app", {
-    //   replace: true,
-    //   relative: "path",
-    //   state: { some: "state" },
-    // });
+    navigate("/app", {
+      replace: true,
+      relative: "path",
+      state: { some: "state" },
+    });
   };
   const renderDiscountAmountDiscountValue = useMemo(() => {
     return (

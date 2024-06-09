@@ -331,6 +331,7 @@ export class DiscountController {
     codes.map((discount) => {
       discountNodes.edges.push(discount);
     });
+
     return discountNodes;
   }
   @Post('/deactiveAllDiscounts')
@@ -2306,10 +2307,20 @@ export class DiscountController {
   }
   @Post('/deleteDiscounts')
   async handleDeleteDiscounts(@Body() discounts: any) {
-    if (discounts.id == 'automatic') {
-      return this.discountAutomaticService.deleteDiscounts(discounts);
+    if (!Array.isArray(discounts)) {
+      if (discounts.basicDetail.type == 'Automatic') {
+        return this.discountAutomaticService.deleteDiscounts(discounts);
+      } else {
+        return this.discountCodeService.deleteDiscounts(discounts);
+      }
     } else {
-      return this.discountCodeService.deleteDiscounts(discounts);
+      discounts.map((discount) => {
+        if (discount.basicDetail.type == 'Automatic') {
+          return this.discountAutomaticService.deleteDiscounts(discount);
+        } else {
+          return this.discountCodeService.deleteDiscounts(discount);
+        }
+      });
     }
   }
 }

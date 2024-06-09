@@ -3,7 +3,7 @@
 client_id = "9976e9765085ed7ecb4561fd266a92aa"
 name = "discount-app"
 handle = "discount-app-658"
-application_url = "https://answers-pirates-receive-costa.trycloudflare.com"
+application_url = "https://laura-basis-equipped-comfort.trycloudflare.com"
 embedded = true
 
 [build]
@@ -17,9 +17,9 @@ scopes = "read_product_listings,read_products,write_discounts,write_products"
 
 [auth]
 redirect_urls = [
-  "https://answers-pirates-receive-costa.trycloudflare.com/auth/callback",
-  "https://answers-pirates-receive-costa.trycloudflare.com/auth/shopify/callback",
-  "https://answers-pirates-receive-costa.trycloudflare.com/api/auth/callback"
+  "https://laura-basis-equipped-comfort.trycloudflare.com/auth/callback",
+  "https://laura-basis-equipped-comfort.trycloudflare.com/auth/shopify/callback",
+  "https://laura-basis-equipped-comfort.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]

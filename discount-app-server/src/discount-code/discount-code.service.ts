@@ -1235,20 +1235,59 @@ export class DiscountCodeService {
   }
   async deleteDiscounts(discounts: any) {
     if (!Array.isArray(discounts)) {
-      const findDiscount = await this.discountBasicService.deleteBasicDetail(
-        discounts.basicDetail,
-      );
-      const deleteDiscount =
-        await this.discountCodeBasicModel.findByIdAndDelete(
-          { _id: discounts._id },
-          { new: true },
-        );
+      await this.discountBasicService.deleteBasicDetail(discounts.basicDetail);
+      if (discounts.basicDetail.method == 'Product Discount') {
+        await this.discountCodeBasicModel.findOneAndDelete({
+          basicDetail: discounts.basicDetail._id,
+        });
+        await this.discountCodeBasicModel.findOneAndDelete({
+          basicDetail: discounts.basicDetail._id,
+        });
+      } else if (discounts.basicDetail.method == 'Order Discount') {
+        await this.discountCodeBasicModel.findOneAndDelete({
+          basicDetail: discounts.basicDetail._id,
+        });
+      } else if (discounts.basicDetail.method == 'Shipping Discount') {
+        await this.discountCodeFreeShippingModel.findOneAndDelete({
+          basicDetail: discounts.basicDetail._id,
+        });
+      }
       const data = await client.request(DELETECODEDISCOUNTS, {
         variables: {
-          id: discounts.id,
+          id: discounts.basicDetail.id,
         },
       });
-      return data.data;
+      if (data.data) {
+        const newData = await this.getAllDiscountCodes();
+        return newData.codeNodes;
+      }
+    } else {
+      discounts.map(async (discount) => {
+        await this.discountBasicService.deleteBasicDetail(discount.basicDetail);
+        if (discount.basicDetail.method == 'Product Discount') {
+          await this.discountCodeBasicModel.findOneAndDelete({
+            basicDetail: discount.basicDetail._id,
+          });
+          await this.discountCodeBasicModel.findOneAndDelete({
+            basicDetail: discount.basicDetail._id,
+          });
+        } else if (discount.basicDetail.method == 'Order Discount') {
+          await this.discountCodeBasicModel.findOneAndDelete({
+            basicDetail: discount.basicDetail._id,
+          });
+        } else if (discount.basicDetail.method == 'Shipping Discount') {
+          await this.discountCodeFreeShippingModel.findOneAndDelete({
+            basicDetail: discount.basicDetail._id,
+          });
+        }
+        await client.request(DELETECODEDISCOUNTS, {
+          variables: {
+            id: discount.basicDetail.id,
+          },
+        });
+      });
+      const newData = await this.getAllDiscountCodes();
+      return newData.codeNodes;
     }
   }
 }

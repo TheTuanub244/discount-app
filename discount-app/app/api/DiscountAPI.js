@@ -51,5 +51,6 @@ export const deleteDiscounts = async (discounts) => {
     "http://localhost:8000/discount/deleteDiscounts",
     discounts,
   );
-  return data.data;
+  console.log(data);
+  return data.data.edges;
 };
