@@ -21,7 +21,7 @@ import Calendar from "../Components/Calendar/Calendar";
 import { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "stream/consumers";
 import { useLoaderData } from "@remix-run/react";
-import { getAllDiscount } from "~/api/DiscountAPI";
+import { getAllDiscount, updateBXGY } from "~/api/DiscountAPI";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { getAllProduct, getProductById } from "~/api/ProductAPI";
 import ProductModal from "~/Components/ProductModal/ProductModal";
@@ -79,6 +79,7 @@ export default function EditPage() {
     onOpen: onProductCustomerSpendsModalOpen,
     onOpenChange: onProductCustomerSpendsModalOpenChange,
   } = useDisclosure();
+
   const initialState = {
     title: discount.basicDetail.title,
     minimumRequirement: {
@@ -88,9 +89,10 @@ export default function EditPage() {
       quantity: {
         choose: false,
       },
-      amount: 0,
-      products: [],
+      amount: discount.discountCustomerBuys.value.amount,
+      products: discount.discountCustomerBuys.item.products.productsToAdd,
     },
+    type: discount.basicDetail.type,
     customerGets: {
       quantity: discount.discountCustomerGets.value.discountOnQuantity.quantity,
       discountValue: {
@@ -687,9 +689,6 @@ export default function EditPage() {
       </div>
     );
   }, [productCustomerGets]);
-  useEffect(() => {
-    console.log(state);
-  }, [state]);
   const renderRadioDiscountValue = useMemo(() => {
     return (
       <RadioGroup
@@ -789,6 +788,24 @@ export default function EditPage() {
       </div>
     );
   }, [state]);
+  useEffect(() => {
+    dispatch({
+      type: "customerGets",
+      subtype: "products",
+      payload: productCustomerGets,
+    });
+  }, [productCustomerGets]);
+  useEffect(() => {
+    dispatch({
+      type: "minimumRequirement",
+      subtype: "products",
+      payload: productCustomerSpends,
+    });
+  }, [productCustomerSpends]);
+  const handleSaveDiscount = async () => {
+    const data = await updateBXGY(state, discount);
+    console.log(initialState);
+  };
   const renderDiscountName = useMemo(() => {
     return (
       <div className="flex gap-1 mt-2">
@@ -1230,9 +1247,9 @@ export default function EditPage() {
             <Button
               color="default"
               style={{ color: "white" }}
-              // onClick={() => {
-              //   handleSaveDiscount();
-              // }}
+              onClick={() => {
+                handleSaveDiscount();
+              }}
             >
               Save discount
             </Button>

@@ -11,7 +11,7 @@ export class ProductService {
   async getProductById(id: any) {
     const data = await client.request(`
     query {
-        product(id: "${id.id}") {
+        product(id: "${id.id.id}") {
           title
           id
           description

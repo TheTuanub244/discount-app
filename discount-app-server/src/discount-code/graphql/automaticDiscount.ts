@@ -114,3 +114,16 @@ mutation discountAutomaticDelete($id: ID!) {
     }
   }
 }`;
+export const UPDATEBXGY = `
+mutation discountAutomaticBxgyUpdate($automaticBxgyDiscount: DiscountAutomaticBxgyInput!, $id: ID!) {
+  discountAutomaticBxgyUpdate(automaticBxgyDiscount: $automaticBxgyDiscount, id: $id) {
+    automaticDiscountNode {
+      id
+    }
+    userErrors {
+      field
+      code
+      message
+    }
+  }
+}`;

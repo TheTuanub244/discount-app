@@ -16,19 +16,32 @@ import {
   CREATEDISCOUNTAUTOMATICBXGY,
   DEACTIVEAUTOMATICDISCOUNTS,
   DELETEDISCOUNTS,
+  UPDATEBXGY,
   createDiscountAutomaticFreeShipping,
 } from './graphql/automaticDiscount';
 import { BasicDetail } from '../schemas/BasicDetails.schema';
 import { CombinesWith } from '../schemas/CombinesWith.schema';
-import { DiscountCustomerGets } from 'src/schemas/DiscountCustomerGets.schema';
+import { DiscountCustomerGets } from '../schemas/DiscountCustomerGets.schema';
 import { populate } from 'dotenv';
 import path from 'path';
+import { DiscountCustomerGetsValue } from '../schemas/DiscountCustomerGetsValue.schema';
+
+import { DiscountCustomerBuys } from '../schemas/DiscountCustomerBuys.schema';
+import { DiscountCustomerBuysValue } from '../schemas/DiscountCustomerBuysValue.schema';
+import { DiscountProductsInput } from '../schemas/DiscountProducsInput.schema';
+import { DiscountEffect } from '../schemas/DiscountEffect.schema';
+import { DiscountOnQuantity } from '../schemas/DiscountOnQuantity.schema';
+import { DiscountAmount } from '../schemas/DiscountAmount.schema';
 
 @Injectable()
 export class DiscountAutomaticService {
   constructor(
     @InjectModel(DiscountAutomaticApp.name)
     private readonly discountAutomaticAppModel: Model<DiscountAutomaticApp>,
+    @InjectModel(DiscountEffect.name)
+    private discountEffectModel: Model<DiscountEffect>,
+    @InjectModel(DiscountOnQuantity.name)
+    private discountOnQuantityModel: Model<DiscountOnQuantity>,
     @InjectModel(DiscountAutomaticBasic.name)
     private readonly discountAutomaticBasicModel: Model<DiscountAutomaticBasic>,
     @InjectModel(DiscountAutomaticBxGy.name)
@@ -40,6 +53,18 @@ export class DiscountAutomaticService {
     private basicDetailModel: Model<BasicDetail>,
     @InjectModel(CombinesWith.name)
     private combinesWithModel: Model<CombinesWith>,
+    @InjectModel(DiscountCustomerGetsValue.name)
+    private discountCustomerGetsValueModel: Model<DiscountCustomerGetsValue>,
+    @InjectModel(DiscountProductsInput.name)
+    private discountProductsInputModel: Model<DiscountProductsInput>,
+    @InjectModel(DiscountCustomerBuys.name)
+    private discountCustomerBuysModel: Model<DiscountCustomerBuys>,
+    @InjectModel(DiscountCustomerBuysValue.name)
+    private discountCustomerBuysValueModel: Model<DiscountCustomerBuysValue>,
+    @InjectModel(DiscountCustomerGets.name)
+    private discountCustomerGetsModel: Model<DiscountCustomerGets>,
+    @InjectModel(DiscountAmount.name)
+    private discountAmountModel: Model<DiscountAmount>,
   ) {}
   async createDiscountAutomaticBasic({
     basicDetail,
@@ -1791,6 +1816,446 @@ export class DiscountAutomaticService {
       });
       const newData = await this.getAllAutomaticCode();
       return newData.automaticNodes;
+    }
+  }
+  async updateBXGY(discount: any, lastData: any) {
+    const updateCombinesWith = await this.combinesWithModel.findByIdAndUpdate(
+      {
+        _id: lastData.basicDetail.combinesWith._id,
+      },
+      {
+        $set: {
+          productDiscounts: discount.combinations.product,
+          orderDiscounts: discount.combinations.order,
+          shippingDiscounts: discount.combinations.shipping,
+        },
+        $currentDate: {
+          lastUpdated: true,
+        },
+      },
+    );
+    await updateCombinesWith.save();
+    const updateBasicDetail = await this.basicDetailModel.findByIdAndUpdate(
+      {
+        _id: lastData.basicDetail._id,
+      },
+      {
+        $set: {
+          title: discount.title,
+          code: discount.title,
+          appliesOncePerCustomer: discount.maxUses.usePerCustomer.choose,
+          usePerOrderLimit: discount.usesPerOrder.amount,
+        },
+        $currentDate: {
+          lastUpdated: true,
+        },
+      },
+    );
+    await updateBasicDetail.save();
+    const discountBuysItem =
+      await this.discountProductsInputModel.findByIdAndUpdate(
+        {
+          _id: lastData.discountCustomerBuys.item.products._id,
+        },
+        {
+          $set: {
+            productsToAdd: discount.minimumRequirement.products,
+          },
+          $currentDate: {
+            lastUpdated: true,
+          },
+        },
+      );
+    await discountBuysItem.save();
+
+    const discountGetsItem =
+      await this.discountProductsInputModel.findByIdAndUpdate(
+        {
+          _id: lastData.discountCustomerGets.item.products._id,
+        },
+        {
+          $set: {
+            productsToAdd: discount.customerGets.products,
+          },
+        },
+      );
+    await discountGetsItem.save();
+    const updateDiscountGetsItem = discountGetsItem.productsToAdd.map(
+      (product) => (product as any).id,
+    );
+    const updatediscountBuysItem = discountBuysItem.productsToAdd.map(
+      (product) => (product as any).id,
+    );
+
+    if (discount.minimumRequirement.subtotal.choose) {
+      const updateDiscountCustomerBuysValue =
+        await this.discountCustomerBuysValueModel.findByIdAndUpdate(
+          {
+            _id: lastData.discountCustomerBuys.value._id,
+          },
+          {
+            $set: {
+              quantity: null,
+              amount: discount.minimumRequirement.amount,
+            },
+            $currentDate: {
+              lastUpdated: true,
+            },
+          },
+        );
+      await updateDiscountCustomerBuysValue.save();
+      if (discount.customerGets.discountValue.percentage.choose) {
+        const updateDiscountEffect =
+          await this.discountEffectModel.findByIdAndUpdate(
+            {
+              _id: lastData.discountCustomerGets.value.discountOnQuantity.effect
+                ._id,
+            },
+            {
+              $set: {
+                percentage:
+                  discount.customerGets.discountValue.percentage.amount,
+                discountAmount: null,
+              },
+              $currentDate: {
+                lastUpdated: true,
+              },
+            },
+          );
+        await updateDiscountEffect.save();
+        const data = await client.request(UPDATEBXGY, {
+          variables: {
+            automaticBxgyDiscount: {
+              combinesWith: {
+                orderDiscounts: updateCombinesWith.orderDiscounts,
+                productDiscounts: updateCombinesWith.productDiscounts,
+                shippingDiscounts: updateCombinesWith.shippingDiscounts,
+              },
+              customerBuys: {
+                items: {
+                  products: {
+                    productsToAdd: updatediscountBuysItem,
+                  },
+                },
+                value: {
+                  amount: updateDiscountCustomerBuysValue.amount.toString(),
+                },
+              },
+              customerGets: {
+                value: {
+                  percentage:
+                    parseFloat(updateDiscountEffect.percentage.toString()) /
+                    100,
+                },
+                items: {
+                  products: {
+                    productsToAdd: updateDiscountGetsItem,
+                  },
+                },
+              },
+              usesPerOrderLimit: updateBasicDetail.usePerOrderLimit.toString(),
+              startsAt: updateBasicDetail.startsAt,
+            },
+            id: lastData.basicDetail.id,
+          },
+        });
+        console.log(data.data.discountAutomaticBxgyUpdate.userErrors);
+      } else if (discount.customerGets.discountValue.amountOff.choose) {
+        if (
+          !lastData.discountCustomerGets.value.discountOnQuantity.effect
+            .discountAmount
+        ) {
+          const newDiscountAmount =
+            await this.discountBasicService.createDiscountAmount({
+              amount: discount.customerGets.discountValue.amountOff.amount,
+              appliesOnEachItem: true,
+            });
+          const data = await client.request(UPDATEBXGY, {
+            variables: {
+              automaticBxgyDiscount: {
+                combinesWith: {
+                  orderDiscounts: updateCombinesWith.orderDiscounts,
+                  productDiscounts: updateCombinesWith.productDiscounts,
+                  shippingDiscounts: updateCombinesWith.shippingDiscounts,
+                },
+                customerBuys: {
+                  items: {
+                    products: {
+                      productsToAdd: updatediscountBuysItem,
+                    },
+                  },
+                  value: {
+                    amount: updateDiscountCustomerBuysValue.amount.toString(),
+                  },
+                },
+                customerGets: {
+                  value: {
+                    discountAmount: {
+                      amount: newDiscountAmount.amount,
+                      appliesOnEachItem: newDiscountAmount.appliesOnEachItem,
+                    },
+                  },
+                  items: {
+                    products: {
+                      productsToAdd: updateDiscountGetsItem,
+                    },
+                  },
+                },
+                usesPerOrderLimit:
+                  updateBasicDetail.usePerOrderLimit.toString(),
+                startsAt: updateBasicDetail.startsAt,
+              },
+              id: lastData.basicDetail.id,
+            },
+          });
+          console.log(data.data.discountAutomaticBxgyUpdate.userErrors);
+        } else {
+          const updateDiscountAmount =
+            await this.discountAmountModel.findByIdAndUpdate(
+              {
+                _id: lastData.discountCustomerGets.value.discountOnQuantity
+                  .effect.discountAmount._id,
+              },
+              {
+                $set: {
+                  amount: discount.customerGets.discountValue.amountOff.amount,
+                  appliesOnEachItem: true,
+                },
+                $currentDate: {
+                  lastUpdated: true,
+                },
+              },
+            );
+          await updateDiscountAmount.save();
+          const data = await client.request(UPDATEBXGY, {
+            variables: {
+              automaticBxgyDiscount: {
+                combinesWith: {
+                  orderDiscounts: updateCombinesWith.orderDiscounts,
+                  productDiscounts: updateCombinesWith.productDiscounts,
+                  shippingDiscounts: updateCombinesWith.shippingDiscounts,
+                },
+                customerBuys: {
+                  items: {
+                    products: {
+                      productsToAdd: updatediscountBuysItem,
+                    },
+                  },
+                  value: {
+                    amount: updateDiscountCustomerBuysValue.amount.toString(),
+                  },
+                },
+                customerGets: {
+                  value: {
+                    discountAMount: {
+                      amount: updateDiscountAmount.amount,
+                      appliesOnEachItem: updateDiscountAmount.appliesOnEachItem,
+                    },
+                  },
+                  items: {
+                    products: {
+                      productsToAdd: updateDiscountGetsItem,
+                    },
+                  },
+                  usesPerOrderLimit:
+                    updateBasicDetail.usePerOrderLimit.toString(),
+                  startsAt: updateBasicDetail.startsAt,
+                },
+              },
+            },
+          });
+          console.log(data.data.discountAutomaticBxgyUpdate.userErrors);
+        }
+      }
+    } else if (discount.minimumRequirement.quantity.choose) {
+      const updateDiscountCustomerBuysValue =
+        await this.discountCustomerBuysValueModel.findByIdAndUpdate(
+          {
+            _id: lastData.discountCustomerBuys.value._id,
+          },
+          {
+            $set: {
+              quantity: discount.minimumRequirement.amount,
+              amount: null,
+            },
+            $currentDate: {
+              lastUpdated: true,
+            },
+          },
+        );
+      await updateDiscountCustomerBuysValue.save();
+      if (discount.customerGets.discountValue.percentage.choose) {
+        const updateDiscountEffect =
+          await this.discountEffectModel.findByIdAndUpdate(
+            {
+              _id: lastData.discountCustomerGets.value.discountOnQuantity.effect
+                ._id,
+            },
+            {
+              $set: {
+                percentage:
+                  discount.customerGets.discountValue.percentage.amount,
+                discountAmount: null,
+              },
+              $currentDate: {
+                lastUpdated: true,
+              },
+            },
+          );
+        await updateDiscountEffect.save();
+        const data = await client.request(UPDATEBXGY, {
+          variables: {
+            automaticBxgyDiscount: {
+              combinesWith: {
+                orderDiscounts: updateCombinesWith.orderDiscounts,
+                productDiscounts: updateCombinesWith.productDiscounts,
+                shippingDiscounts: updateCombinesWith.shippingDiscounts,
+              },
+              customerBuys: {
+                items: {
+                  products: {
+                    productsToAdd: updatediscountBuysItem,
+                  },
+                },
+                value: {
+                  quantity: updateDiscountCustomerBuysValue.quantity.toString(),
+                  amount: null,
+                },
+              },
+              customerGets: {
+                value: {
+                  percentage:
+                    parseFloat(updateDiscountEffect.percentage.toString()) /
+                    100,
+                },
+                items: {
+                  products: {
+                    productsToAdd: updateDiscountGetsItem,
+                  },
+                },
+              },
+              usesPerOrderLimit: updateBasicDetail.usePerOrderLimit.toString(),
+              startsAt: updateBasicDetail.startsAt,
+            },
+            id: lastData.basicDetail.id,
+          },
+        });
+
+        console.log(data.data.discountAutomaticBxgyUpdate.userErrors);
+      } else if (discount.customerGets.discountValue.amountOff.choose) {
+        if (
+          !lastData.discountCustomerGets.value.discountOnQuantity.effect
+            .discountAmount
+        ) {
+          console.log(updateDiscountCustomerBuysValue);
+
+          const newDiscountAmount =
+            await this.discountBasicService.createDiscountAmount({
+              amount: discount.customerGets.discountValue.amountOff.amount,
+              appliesOnEachItem: true,
+            });
+          const data = await client.request(UPDATEBXGY, {
+            variables: {
+              automaticBxgyDiscount: {
+                combinesWith: {
+                  orderDiscounts: updateCombinesWith.orderDiscounts,
+                  productDiscounts: updateCombinesWith.productDiscounts,
+                  shippingDiscounts: updateCombinesWith.shippingDiscounts,
+                },
+                customerBuys: {
+                  items: {
+                    products: {
+                      productsToAdd: updatediscountBuysItem,
+                    },
+                  },
+                  value: {
+                    amount: null,
+                    quantity:
+                      updateDiscountCustomerBuysValue.quantity.toString(),
+                  },
+                },
+                customerGets: {
+                  value: {
+                    discountAmount: {
+                      amount: newDiscountAmount.amount,
+                      appliesOnEachItem: newDiscountAmount.appliesOnEachItem,
+                    },
+                  },
+                  items: {
+                    products: {
+                      productsToAdd: updateDiscountGetsItem,
+                    },
+                  },
+                },
+                usesPerOrderLimit:
+                  updateBasicDetail.usePerOrderLimit.toString(),
+                startsAt: updateBasicDetail.startsAt,
+              },
+              id: lastData.basicDetail.id,
+            },
+          });
+          console.log(data.data.discountAutomaticBxgyUpdate.userErrors);
+        } else {
+          const updateDiscountAmount =
+            await this.discountAmountModel.findByIdAndUpdate(
+              {
+                _id: lastData.discountCustomerGets.value.discountOnQuantity
+                  .effect.discountAmount._id,
+              },
+              {
+                $set: {
+                  amount: discount.customerGets.discountValue.amountOff.amount,
+                  appliesOnEachItem: true,
+                },
+                $currentDate: {
+                  lastUpdated: true,
+                },
+              },
+            );
+          await updateDiscountAmount.save();
+          const data = await client.request(UPDATEBXGY, {
+            variables: {
+              automaticBxgyDiscount: {
+                combinesWith: {
+                  orderDiscounts: updateCombinesWith.orderDiscounts,
+                  productDiscounts: updateCombinesWith.productDiscounts,
+                  shippingDiscounts: updateCombinesWith.shippingDiscounts,
+                },
+                customerBuys: {
+                  items: {
+                    products: {
+                      productsToAdd: updatediscountBuysItem,
+                    },
+                  },
+                  value: {
+                    amount: null,
+                    quantity:
+                      updateDiscountCustomerBuysValue.quantity.toString(),
+                  },
+                },
+                customerGets: {
+                  value: {
+                    discountAmount: {
+                      amount: updateDiscountAmount.amount,
+                      appliesOnEachItem: updateDiscountAmount.appliesOnEachItem,
+                    },
+                  },
+                  items: {
+                    products: {
+                      productsToAdd: updateDiscountGetsItem,
+                    },
+                  },
+                },
+                usesPerOrderLimit:
+                  updateBasicDetail.usePerOrderLimit.toString(),
+                startsAt: updateBasicDetail.startsAt,
+              },
+              id: lastData.basicDetail.id,
+            },
+          });
+          console.log(data.data.discountAutomaticBxgyUpdate.userErrors);
+        }
+      }
     }
   }
 }

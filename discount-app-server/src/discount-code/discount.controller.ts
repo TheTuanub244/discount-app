@@ -2323,4 +2323,13 @@ export class DiscountController {
       });
     }
   }
+  @Post('/updateBXGY')
+  async handleUpdateBXGY(@Body() data: any) {
+    if (data.discount.type == 'Automatic') {
+      return this.discountAutomaticService.updateBXGY(
+        data.discount,
+        data.lastData,
+      );
+    }
+  }
 }

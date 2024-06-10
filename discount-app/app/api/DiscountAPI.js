@@ -51,6 +51,13 @@ export const deleteDiscounts = async (discounts) => {
     "http://localhost:8000/discount/deleteDiscounts",
     discounts,
   );
-  console.log(data);
   return data.data.edges;
+};
+export const updateBXGY = async (discount, lastData) => {
+  console.log(discount);
+  const data = await axios.post("http://localhost:8000/discount/updateBXGY", {
+    discount,
+    lastData,
+  });
+  return data.data;
 };
